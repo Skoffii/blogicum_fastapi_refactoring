@@ -1,7 +1,0 @@
-from pydantic import BaseModel, Field
-
-
-class Category(BaseModel):
-    is_published: bool = True
-    title: str = Field(max_length=256)
-    description: str

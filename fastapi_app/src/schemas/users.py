@@ -3,10 +3,10 @@ from pydantic import BaseModel, SecretStr, ConfigDict
 
 class User(BaseModel):
     id: int
-    model_config = ConfigDict(from_attributes=True)
     login: str
-    Email: str
-    full_name: str | None
+    first_name: str | None = None
+    email: str | None = None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(User):

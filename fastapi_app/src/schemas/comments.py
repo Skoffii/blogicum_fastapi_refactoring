@@ -1,12 +1,23 @@
 from pydantic import BaseModel
 from datetime import datetime
-from users import User
-
-from posts import Post
 
 
 class Comment(BaseModel):
     text: str
-    post: int = Post.id
+    post_id: int
     created_at: datetime
-    author: int = User.id
+    author_id: int
+
+
+class CommentRequest(BaseModel):
+    text: str
+    post_id: int
+    autor_id: int
+
+
+class CommentUpdate(BaseModel):
+    text: str | None = None
+
+
+class CommentResponse(Comment):
+    pass
