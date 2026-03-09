@@ -10,9 +10,6 @@ class UserRepository:
         self._model: Type[User] = User
 
     def get(self, session: Session, login: str) -> User:
-        query = (
-            session.query(self._model)
-            .where(self._model.login == login)
-        )
+        query = session.query(self._model).where(self._model.login == login)
 
         return query.scalar()

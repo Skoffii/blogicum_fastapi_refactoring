@@ -13,7 +13,7 @@ class CategoryRequest(Category):
 
 
 class CategoryUpdate(BaseModel):
-    title:  Annotated[str | None, Field(max_length=256)]
+    title: Annotated[str | None, Field(max_length=256)]
     description: str
 
 

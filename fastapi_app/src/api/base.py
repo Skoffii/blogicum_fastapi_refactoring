@@ -11,14 +11,16 @@ router = APIRouter()
 @router.get("/user/{login}", status_code=status.HTTP_200_OK, response_model=User)
 async def get_user_by_login(
     login: str,
-    use_case: GetUserByLoginUseCase = Depends(get_get_user_by_login_use_case)
+    use_case: GetUserByLoginUseCase = Depends(get_get_user_by_login_use_case),
 ) -> User:
     user = await use_case.execute(login=login)
 
     return user
 
 
-@router.post("/test_json", status_code=status.HTTP_201_CREATED, response_model=PostResponseSchema)
+@router.post(
+    "/test_json", status_code=status.HTTP_201_CREATED, response_model=PostResponseSchema
+)
 async def test_json(post: PostRequestSchema) -> dict:
     if len(post.text) < 3:
         raise HTTPException(
@@ -26,9 +28,6 @@ async def test_json(post: PostRequestSchema) -> dict:
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
-    response = {
-        "post_text": post.text,
-        "author_name": post.author.login
-    }
+    response = {"post_text": post.text, "author_name": post.author.login}
 
     return PostResponseSchema.model_validate(obj=response)
