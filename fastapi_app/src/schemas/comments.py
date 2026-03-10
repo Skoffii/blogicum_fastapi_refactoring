@@ -14,7 +14,9 @@ class CommentRequest(BaseModel):
 
 
 class CommentUpdate(BaseModel):
+    post_id: int
     text: str | None = None
+    author_id: int
 
 
 class CommentResponse(Comment):

@@ -3,6 +3,7 @@ from datetime import datetime
 
 
 class Post(BaseModel):
+    id: int
     is_published: bool = True
     created_at: datetime
     title: str
@@ -30,6 +31,7 @@ class PostUpdate(BaseModel):
 
 
 class PostResponse(BaseModel):
+    id: int
     author: int
     title: str
     created_at: datetime
