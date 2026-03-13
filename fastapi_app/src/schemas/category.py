@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import Annotated
 
+from .models import Category
+
 
 class Category(BaseModel):
     is_published: bool = True

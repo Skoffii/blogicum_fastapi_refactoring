@@ -1,18 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 
-
-class Post(BaseModel):
-    id: int
-    is_published: bool = True
-    created_at: datetime
-    title: str
-    text: str
-    pub_date: datetime
-    image: str | None = None
-    author_id: int
-    location: int | None = None
-    category: int | None = None
+from .models import Post
 
 
 class PostRequest(Post):

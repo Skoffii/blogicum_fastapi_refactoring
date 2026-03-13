@@ -15,8 +15,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.include_router(posts_router)
-    app.include_router(category_router)
-    app.include_router(comments_router)
+    app.include_router(posts_router, tags=["Posts"])
+    app.include_router(category_router, tags=["Category"])
+    app.include_router(comments_router, tags=["Comments"])
 
     return app

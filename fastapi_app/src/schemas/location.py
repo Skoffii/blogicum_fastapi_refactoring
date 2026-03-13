@@ -1,11 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Annotated
 
-
-class Location(BaseModel):
-    is_published: bool = True
-    name: str = Field(max_length=256)
-
+from .models import Location
 
 class LocationRequest(Location):
     pass

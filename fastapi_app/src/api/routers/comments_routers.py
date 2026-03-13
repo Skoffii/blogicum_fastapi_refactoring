@@ -20,7 +20,7 @@ async def add_comment(post_id: int, comment: CommentRequest):
             comments_db.append(new_comment)
             comment_id += 1
             return new_comment
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
 
 @router.put(
@@ -36,8 +36,8 @@ async def edit_comment(post_id: int, comment_id: int, comment: CommentUpdate):
                     update_comment = post.model_dump(exclude_unset=True)
                     comment.update(update_comment)
                     return comment
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
 
 @router.delete("/delete_comment/{comemnt_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -48,5 +48,5 @@ async def delete_comemnt(post_id: int, comment_id: int):
                 if comment["id"] == comment_id:
                     comments_db.pop(comment_num)
                     return None
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
