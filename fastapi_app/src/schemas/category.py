@@ -1,14 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import Field, BaseModel, ConfigDict
 from typing import Annotated
 
-from .models import Category
-
-
-class Category(BaseModel):
-    is_published: bool = True
-    title: str = Field(max_length=256)
-    slug: str
-    description: str
+from ..models import Category
 
 
 class CategoryRequest(Category):
@@ -17,8 +10,9 @@ class CategoryRequest(Category):
 
 class CategoryUpdate(BaseModel):
     title: Annotated[str | None, Field(max_length=256)]
-    description: str
+    description: str | None
 
 
 class CategoryResponse(Category):
-    pass
+    model_config = ConfigDict(from_attributes=True)
+    id: int

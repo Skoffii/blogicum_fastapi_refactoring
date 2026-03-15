@@ -4,16 +4,14 @@ from datetime import datetime
 
 
 class Post(BaseModel):
-    id: int
     is_published: bool = True
-    created_at: datetime
     title: str = Field(..., max_length=256)
     text: str
-    pub_date: datetime
-    image: str | None = None
+    pub_date: datetime = Field(default_factory=datetime.now)
     author_id: int
     location: int | None = None
     category: int | None = None
+    image: str | None = None
 
 
 class Category(BaseModel):
@@ -31,5 +29,4 @@ class Location(BaseModel):
 class Comment(BaseModel):
     text: str
     post_id: int
-    created_at: datetime
     author_id: int

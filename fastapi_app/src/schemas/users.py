@@ -1,4 +1,4 @@
-from pydantic import BaseModel, SecretStr, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
 
 class User(BaseModel):

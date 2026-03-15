@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
-from test_db import posts_db, comments_db
-from schemas.comments import CommentRequest, CommentUpdate, CommentResponse
+from src.test_db import posts_db, comments_db
+from src.schemas.comments import CommentRequest, CommentUpdate, CommentResponse
 from datetime import datetime
 
 router = APIRouter(prefix="/posts/{post_id}")

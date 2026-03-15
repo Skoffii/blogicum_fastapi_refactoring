@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
-from test_db import categories_db, posts_db
-from schemas.category import CategoryResponse
+from src.test_db import categories_db, posts_db
+from src.schemas.category import CategoryResponse
 
 router = APIRouter()
 

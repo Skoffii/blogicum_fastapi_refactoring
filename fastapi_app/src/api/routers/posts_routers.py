@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from typing import List
-from test_db import posts_db
-from schemas.posts import PostRequest, PostResponse, PostUpdate
+from src.test_db import posts_db
+from src.schemas.posts import PostRequest, PostResponse, PostUpdate
 from datetime import datetime
 
 router = APIRouter()

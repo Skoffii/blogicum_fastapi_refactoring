@@ -1,7 +1,7 @@
-from pydantic import BaseModel
 from datetime import datetime
+from pydantic import ConfigDict, BaseModel
 
-from .models import Post
+from ..models import Post
 
 
 class PostRequest(Post):
@@ -10,19 +10,21 @@ class PostRequest(Post):
 
 class PostUpdate(BaseModel):
     is_published: bool | None = True
-    created_at: datetime | None = None
     title: str | None = None
     text: str | None = None
     pub_date: datetime | None = None
+    location: int | None = None
+    category: int | None = None
     image: str | None = None
-    location: int | None = None
-    category: int | None = None
 
 
-class PostResponse(BaseModel):
+class PostResponse(Post):
+    model_config = ConfigDict(from_attributes=True)
     id: int
-    author: int
     title: str
-    created_at: datetime
+    text: str
+    pub_date: datetime
+    author_id: int
     location: int | None = None
     category: int | None = None
+    created_at: datetime
