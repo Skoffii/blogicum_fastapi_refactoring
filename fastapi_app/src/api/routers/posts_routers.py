@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from typing import List
-from src.test_db import posts_db
-from src.schemas.posts import PostRequest, PostResponse, PostUpdate
+from test_db import db
+from schemas.posts import PostRequest, PostResponse, PostUpdate
 from datetime import datetime
 
 router = APIRouter()
@@ -9,14 +9,14 @@ router = APIRouter()
 
 @router.get("/", status_code=status.HTTP_200_OK, response_model=List[PostResponse])
 async def index():
-    return posts_db
+    return db.posts_db
 
 
 @router.get(
     "/posts/{post_id}", status_code=status.HTTP_200_OK, response_model=PostResponse
 )
 async def post_detail(post_id: int):
-    for post in posts_db:
+    for post in db.posts_db:
         if post["id"] == post_id:
             return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -26,31 +26,31 @@ async def post_detail(post_id: int):
     "/posts/create", status_code=status.HTTP_201_CREATED, response_model=PostResponse
 )
 async def create_post(post: PostRequest):
-    global post_id
+    global db
     new_post = post.model_dump()
-    new_post["id"] = post_id
+    new_post["id"] = db.post_id
     new_post["created_at"] = datetime.now()
-    posts_db.append(new_post)
-    post_id += 1
+    db.posts_db.append(new_post)
+    db.post_id += 1
     return new_post
 
 
 @router.put(
     "/posts/{post_id}/edit", status_code=status.HTTP_200_OK, response_model=PostResponse
 )
-async def edit_post(post_id: int, post: PostUpdate):
-    for post in posts_db:
+async def edit_post(post_id: int, post_update: PostUpdate):
+    for post in db.posts_db:
         if post["id"] == post_id:
-            update_post = post.model_dump(exclude_unset=True)
-            post.update(update_post)
+            update_data = post_update.model_dump(exclude_unset=True)
+            post.update(update_data)
             return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 @router.delete("/posts/{post_id}/delete", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(post_id: int):
-    for post_num, post in enumerate(posts_db):
+    for post_num, post in enumerate(db.posts_db):
         if post["id"] == post_id:
-            posts_db.pop(post_num)
+            db.posts_db.pop(post_num)
             return None
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)

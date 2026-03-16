@@ -1,7 +1,7 @@
 from pydantic import Field, BaseModel, ConfigDict
 from typing import Annotated
 
-from ..models import Category
+from models import Category
 
 
 class CategoryRequest(Category):

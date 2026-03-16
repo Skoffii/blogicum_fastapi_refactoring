@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
-from ..models import Comment
+from models import Comment
 
 
 class CommentRequest(Comment):

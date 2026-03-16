@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import ConfigDict, BaseModel
 
-from ..models import Post
+from models import Post
 
 
 class PostRequest(Post):

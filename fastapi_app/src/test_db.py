@@ -1,14 +1,19 @@
-posts_db: list[dict] = []
-post_id = 1
+class DBState:
+    def __init__(self):
+        self.posts_db: list[dict] = []
+        self.post_id = 1
 
-categories_db: list[dict] = []
-category_id = 1
+        self.categories_db: list[dict] = []
+        self.category_id = 1
 
-comments_db: list[dict] = []
-comment_id = 1
+        self.comments_db: list[dict] = []
+        self.comment_id = 1
 
-location_db: list[dict] = []
-location_id = 1
+        self.location_db: list[dict] = []
+        self.location_id = 1
 
-users_db: list[dict] = []
-user_id = 1
+        self.users_db: list[dict] = []
+        self.user_id = 1
+
+
+db = DBState()
