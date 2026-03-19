@@ -6,7 +6,11 @@ from typing import List
 router = APIRouter()
 
 
-@router.get("/category/{category_slug}/", status_code=status.HTTP_200_OK, response_model=List[CategoryResponse])
+@router.get(
+    "/category/{category_slug}/",
+    status_code=status.HTTP_200_OK,
+    response_model=List[CategoryResponse],
+)
 async def category_posts(category_slug: str):
     category_exists = any(cat["slug"] == category_slug for cat in db.categories_db)
     if not category_exists:

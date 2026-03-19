@@ -8,7 +8,7 @@ router = APIRouter(prefix="/posts/{post_id}")
 
 @router.post(
     "/comment/", status_code=status.HTTP_201_CREATED, response_model=CommentResponse
-    )
+)
 async def add_comment(post_id: int, comment: CommentRequest):
     global db
     for post in db.posts_db:
