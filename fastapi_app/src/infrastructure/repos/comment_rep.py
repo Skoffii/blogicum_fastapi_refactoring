@@ -10,9 +10,7 @@ class CommentRepository:
     def __init__(self):
         self._model: Type[Comment] = Comment
 
-    def get_comments_by_post(
-            self, session: Session, post_id: int
-            ) -> List[Comment]:
+    def get_comments_by_post(self, session: Session, post_id: int) -> List[Comment]:
         query = (
             session.query(self._model)
             .options(joinedload(self._model.author))
@@ -21,9 +19,7 @@ class CommentRepository:
         )
         return query.all()
 
-    def get_comment(
-            self, session: Session, comment_id: int
-            ) -> Optional[Comment]:
+    def get_comment(self, session: Session, comment_id: int) -> Optional[Comment]:
         query = (
             session.query(self._model)
             .options(joinedload(self._model.author))
@@ -32,8 +28,7 @@ class CommentRepository:
         return query.scalar()
 
     def create_comment(
-        self, session: Session, data: CommentRequest,
-        author_id: int, post_id: int
+        self, session: Session, data: CommentRequest, author_id: int, post_id: int
     ) -> Comment:
         new_comment = self._model(
             data.model_dump(),

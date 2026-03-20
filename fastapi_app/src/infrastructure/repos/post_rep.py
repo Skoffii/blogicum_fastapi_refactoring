@@ -56,7 +56,7 @@ class PostRepository:
 
     def create_post(self, session: Session, data: PostRequest, author_id: int) -> Post:
         new_post = self._model(
-            **data.model_dump(), author_id=author_id, pub_date=datetime.now()
+            data.model_dump(), author_id=author_id, pub_date=datetime.now()
         )
         session.add(new_post)
         session.commit()
@@ -64,8 +64,8 @@ class PostRepository:
         return new_post
 
     def update_post(self, session: Session, post: Post, data: PostUpdate) -> Post:
-        update_data = data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
+        up_post = data.model_dump(exclude_unset=True)
+        for key, value in up_post.items():
             setattr(post, key, value)
 
         session.commit()

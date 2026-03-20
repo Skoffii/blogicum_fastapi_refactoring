@@ -8,8 +8,12 @@ from posts_model import Post
 class User(Base):
     __tablename__ = "blog_users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    login: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+        )
+    login: Mapped[str] = mapped_column(
+        String(128), nullable=False, unique=True
+        )
     password: Mapped[str] = mapped_column(nullable=False)
     first_name: Mapped[str] = mapped_column(String(256), nullable=True)
     last_name: Mapped[str] = mapped_column(String(256), nullable=True)

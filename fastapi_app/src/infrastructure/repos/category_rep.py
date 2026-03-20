@@ -12,6 +12,8 @@ class CategoryRepository:
         query = session.query(self._model).where(self._model.slug == slug)
         return query.scalar()
 
-    def get_by_id(self, session: Session, category_id: int) -> Optional[Category]:
+    def get_by_id(
+            self, session: Session, category_id: int
+            ) -> Optional[Category]:
         query = session.query(self._model).where(self._model.id == category_id)
         return query.scalar()

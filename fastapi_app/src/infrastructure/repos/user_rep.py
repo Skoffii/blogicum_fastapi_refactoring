@@ -12,6 +12,10 @@ class UserRepository:
         query = session.query(self._model).where(self._model.id == user_id)
         return query.scalar()
 
+    def get_by_login(self, session: Session, login: int) -> Optional[User]:
+        query = session.query(self._model).where(self._model.login == login)
+        return query.scalar()
+
     def create_user(self, session: Session, data: UserRequest) -> User:
         new_user = self._model(**data.model_dump())
         session.add(new_user)
@@ -19,7 +23,9 @@ class UserRepository:
         session.refresh(new_user)
         return new_user
 
-    def update_user(self, session: Session, user: User, data: UserUpdate) -> User:
+    def update_user(
+            self, session: Session, user: User, data: UserUpdate
+            ) -> User:
         update_user = data.model_dump(exclude_unset=True)
         for key, value in update_user.items():
             setattr(user, key, value)
