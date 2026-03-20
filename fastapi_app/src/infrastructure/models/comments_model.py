@@ -10,9 +10,7 @@ from users_model import User
 class Comment(Base):
     __tablename__ = "blog_comment"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-        )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(), nullable=False

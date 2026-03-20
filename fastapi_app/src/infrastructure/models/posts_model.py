@@ -13,12 +13,8 @@ from database import Base
 class Post(Base):
     __tablename__ = "blog_post"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-        )
-    is_published: Mapped[bool] = mapped_column(
-        Boolean, default=True, nullable=False
-        )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    is_published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(), nullable=False
     )
@@ -34,8 +30,7 @@ class Post(Base):
         Integer, ForeignKey("locations.id", ondelete="SET NULL"), nullable=True
     )
     category_id: Mapped = mapped_column(
-        Integer, ForeignKey("categories.id", ondelete="SET NULL"),
-        nullable=True
+        Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
     )
 
     author_id: Mapped["User"] = relationship(back_populates="posts")
