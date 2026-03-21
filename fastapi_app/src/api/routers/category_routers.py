@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
-from test_db import db
+from fastapi import APIRouter, status, Depends
+
 from schemas.category import CategoryResponse
-from typing import List
+from domain.use_cases.category_usecases import *
+from api.depends import get_category_by_id_use_case, get_category_by_slug_use_case
 
 router = APIRouter()
 
@@ -9,16 +10,24 @@ router = APIRouter()
 @router.get(
     "/category/{category_slug}/",
     status_code=status.HTTP_200_OK,
-    response_model=List[CategoryResponse],
+    response_model=CategoryResponse,
 )
-async def category_posts(category_slug: str):
-    category_exists = any(cat["slug"] == category_slug for cat in db.categories_db)
-    if not category_exists:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    cat_posts = []
-    for post in db.posts_db:
-        if post.get("category") == category_slug:
-            cat_posts.append(post)
-    if not cat_posts:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    return cat_posts
+async def category_by_slug(
+    category_slug: str,
+    use_case: GetCategoryBySlugUseCase = Depends(get_category_by_slug_use_case),
+) -> CategoryResponse:
+    category = await use_case.execute(category_slug=category_slug)
+    return category
+
+
+@router.get(
+    "/category/{category_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=CategoryResponse,
+)
+async def category_by_id(
+    category_id: int,
+    use_case: GetCategoryByIdUseCase = Depends(get_category_by_id_use_case),
+) -> CategoryResponse:
+    category = await use_case.execute(category_id=category_id)
+    return category

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr
-from typing import Annotated
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Annotated, Optional
 
 from models import User
 
@@ -7,16 +7,18 @@ from models import User
 class UserUpdate(BaseModel):
     first_name: str = Annotated[str | None, Field(max_length=256)]
     last_name: str = Annotated[str | None, Field(max_length=256)]
-    email: EmailStr = Annotated[str | None, Field(max_length=256)]
+    email: Optional[EmailStr] = Field(None, max_length=254)
 
 
 class UserRequest(User):
-    login: str
-    password: SecretStr
+    pass
 
 
-class UserResponse(User):
+class UserResponse(BaseModel):
     id: int
-    login: str
+    username: str
+    first_name: str | None = None
+    last_name: str | None = None
+    email: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

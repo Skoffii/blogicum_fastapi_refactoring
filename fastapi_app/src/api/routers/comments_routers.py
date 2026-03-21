@@ -1,26 +1,52 @@
-from fastapi import APIRouter, HTTPException, status
-from test_db import db
+from fastapi import APIRouter, status, Depends
+
 from schemas.comments import CommentRequest, CommentUpdate, CommentResponse
-from datetime import datetime
+from domain.use_cases.comment_usecase import *
+from api.depends import (
+    get_comments_by_post_use_case,
+    get_comment_by_id_use_case,
+    create_comment_use_case,
+    update_comment_use_case,
+    delete_comment_use_case,
+)
 
 router = APIRouter(prefix="/posts/{post_id}")
+
+
+@router.get(
+    "/comments/", status_code=status.HTTP_200_OK, response_model=List[CommentResponse]
+)
+async def get_post_commets(
+    post_id: int,
+    use_case: GetCommentsByPostUseCase = Depends(get_comments_by_post_use_case),
+) -> CommentResponse:
+    return await use_case.execute(post_id=post_id)
+
+
+@router.get(
+    "/comments/{comment_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=CommentResponse,
+)
+async def get_comment(
+    comment_id: int,
+    use_case: GetCommentByIdUseCase = Depends(get_comment_by_id_use_case),
+) -> CommentResponse:
+    comment = await use_case.execute(comment_id=comment_id)
+    return comment
 
 
 @router.post(
     "/comment/", status_code=status.HTTP_201_CREATED, response_model=CommentResponse
 )
-async def add_comment(post_id: int, comment: CommentRequest):
-    global db
-    for post in db.posts_db:
-        if post["id"] == post_id:
-            new_comment = comment.model_dump()
-            new_comment["id"] = db.comment_id
-            new_comment["post_id"] = post_id
-            new_comment["created_at"] = datetime.now()
-            db.comments_db.append(new_comment)
-            db.comment_id += 1
-            return new_comment
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+async def add_comment(
+    post_id: int,
+    user: int,
+    comment: CommentRequest,
+    use_case: CreateCommentUseCase = Depends(create_comment_use_case),
+) -> CommentResponse:
+    new_comment = await use_case.execute(post_id=post_id, data=comment, author_id=user)
+    return new_comment
 
 
 @router.put(
@@ -28,25 +54,23 @@ async def add_comment(post_id: int, comment: CommentRequest):
     status_code=status.HTTP_200_OK,
     response_model=CommentResponse,
 )
-async def edit_comment(post_id: int, comment_id: int, comment: CommentUpdate):
-    for post in db.posts_db:
-        if post["id"] == post_id:
-            for db_comment in db.comments_db:
-                if db_comment["id"] == comment_id:
-                    update_comment = comment.model_dump(exclude_unset=True)
-                    db_comment.update(update_comment)
-                    return db_comment
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+async def edit_comment(
+    comment_id: int,
+    user: int,
+    comment: CommentUpdate,
+    use_case: UpdateCommentUseCase = Depends(update_comment_use_case),
+) -> CommentResponse:
+    updated_comment = await use_case.execute(
+        comment_id=comment_id, data=comment, current_user_id=user
+    )
+    return updated_comment
 
 
 @router.delete("/delete_comment/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_comment(post_id: int, comment_id: int):
-    for post in db.posts_db:
-        if post["id"] == post_id:
-            for comment_num, comment in enumerate(db.comments_db):
-                if comment["id"] == comment_id:
-                    db.comments_db.pop(comment_num)
-                    return None
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+async def delete_comment(
+    comment_id: int,
+    user: int,
+    use_case: DeleteCommentUseCase = Depends(delete_comment_use_case),
+) -> None:
+    await use_case.execute(comment_id=comment_id, current_user_id=user)
+    return None

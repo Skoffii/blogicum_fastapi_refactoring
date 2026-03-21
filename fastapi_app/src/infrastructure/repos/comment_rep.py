@@ -1,8 +1,7 @@
 from typing import Type, List, Optional
 from sqlalchemy.orm import Session, joinedload
-from datetime import datetime
 
-from models.comments_model import Comment
+from infrastructure.models.comments_model import Comment
 from schemas.comments import CommentRequest, CommentUpdate
 
 
@@ -31,14 +30,10 @@ class CommentRepository:
         self, session: Session, data: CommentRequest, author_id: int, post_id: int
     ) -> Comment:
         new_comment = self._model(
-            data.model_dump(),
-            author_id=author_id,
-            post_id=post_id,
-            pub_date=datetime.now,
+            **data.model_dump(), author_id=author_id, post_id=post_id
         )
         session.add(new_comment)
         session.commit
-        session.refresh(new_comment)
         return new_comment
 
     def update_comment(

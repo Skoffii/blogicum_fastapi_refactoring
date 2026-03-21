@@ -6,8 +6,8 @@ from infrastructure.database import database
 from infrastructure.repos.post_rep import PostRepository
 from infrastructure.repos.user_rep import UserRepository
 from infrastructure.repos.category_rep import CategoryRepository
-from src.schemas.posts import PostRequest, PostResponse, PostUpdate
-from src.schemas.users import UserResponse
+from schemas.posts import PostRequest, PostResponse, PostUpdate
+from schemas.users import UserResponse
 
 
 class GetPostUseCase:
@@ -15,15 +15,9 @@ class GetPostUseCase:
         self._database = database
         self._repo = PostRepository()
 
-    async def execute(
-            self, skip: int = 0, limit: int = 20
-            ) -> List[PostResponse]:
+    async def execute(self, skip: int = 0, limit: int = 20) -> List[PostResponse]:
         with self._database.session() as session:
-            posts = self._repo.get_posts(
-                session=session,
-                skip=skip,
-                limit=limit
-                )
+            posts = self._repo.get_posts(session=session, skip=skip, limit=limit)
         return [PostResponse.model_validate(obj=post) for post in posts]
 
 
@@ -62,9 +56,7 @@ class GetPostsByAuthorUseCase:
         self._repo = PostRepository()
         self._user_repo = UserRepository()
 
-    async def execute(
-            self, login: str, skip: int = 0, limit: int = 10
-            ) -> dict:
+    async def execute(self, login: str, skip: int = 0, limit: int = 10) -> dict:
         with self._database.session() as session:
             user = self._user_repo.get_by_login(session=session, login=login)
 
@@ -92,18 +84,14 @@ class GetPostsByCategoryUseCase:
     ) -> List[PostResponse]:
         with self._database.session() as session:
             category = self._category_repo.get_by_slug(
-                session=session,
-                slug=category_slug
+                session=session, slug=category_slug
             )
 
             if not category or not category.is_published:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
             posts = self._repo.get_by_category(
-                session=session,
-                category_id=category.id,
-                skip=skip,
-                limit=limit
+                session=session, category_id=category.id, skip=skip, limit=limit
             )
 
         return [PostResponse.model_validate(obj=post) for post in posts]
@@ -114,13 +102,11 @@ class CreatePostUseCase:
         self._database = database
         self._repo = PostRepository()
 
-    async def execute(self, data: PostRequest, author_id: int) -> PostRequest:
+    async def execute(self, data: PostRequest, author_id: int) -> PostResponse:
         with self._database.session() as session:
-            post = self._repo.create(
-                session=session,
-                data=data,
-                author_id=author_id
-                )
+            post = self._repo.create_post(
+                session=session, data=data, author_id=author_id
+            )
 
         return PostResponse.model_validate(obj=post)
 
@@ -142,6 +128,28 @@ class UpdatePostUseCase:
             if current_user_id != post.author_id:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
-            post = self._repo.update(session=session, post=post, data=data)
+            post = self._repo.update_post(session=session, post=post, data=data)
 
         return PostResponse.model_validate(obj=post)
+
+
+class DeletePostUseCase:
+    def __init__(self):
+        self._database = database
+        self._repo = PostRepository()
+
+    async def execute(self, post_id: int, current_user_id: int) -> None:
+        with self._database.session() as session:
+            post = self._repo.get_by_id(session=session, post_id=post_id)
+
+            if not post:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+
+            if current_user_id != post.author_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                )
+
+            self._repo.delete_post(session=session, post=post)

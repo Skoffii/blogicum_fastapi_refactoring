@@ -2,7 +2,7 @@ from typing import Type, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from models.posts_model import Post
+from infrastructure.models.posts_model import Post
 from schemas.posts import PostRequest, PostUpdate
 
 
@@ -56,7 +56,10 @@ class PostRepository:
 
     def create_post(self, session: Session, data: PostRequest, author_id: int) -> Post:
         new_post = self._model(
-            data.model_dump(), author_id=author_id, pub_date=datetime.now()
+            **data.model_dump(),
+            author_id=author_id,
+            pub_date=datetime.now(),
+            created_at=datetime.now(),
         )
         session.add(new_post)
         session.commit()
