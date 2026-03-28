@@ -6,6 +6,7 @@ from infrastructure.database import database
 from infrastructure.repos.post_rep import PostRepository
 from infrastructure.repos.user_rep import UserRepository
 from infrastructure.repos.category_rep import CategoryRepository
+from infrastructure.models.categories_model import Category
 from schemas.posts import PostRequest, PostResponse, PostUpdate
 from schemas.users import UserResponse
 
@@ -40,7 +41,7 @@ class GetPostByIdUseCase:
                 can_view = True
             elif (
                 post.is_published
-                and post.category.is_published
+                and (post.category is None or post.category.is_published)
                 and post.pub_date <= datetime.now()
             ):
                 can_view = True

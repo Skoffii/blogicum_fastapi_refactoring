@@ -1,8 +1,9 @@
 from typing import Type, List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from infrastructure.models.posts_model import Post
+from infrastructure.models.categories_model import Category
 from schemas.posts import PostRequest, PostUpdate
 
 
@@ -14,11 +15,11 @@ class PostRepository:
         now = datetime.now()
         query = (
             session.query(self._model)
-            .join(self._model.category)
+            .outerjoin(self._model.category)
             .where(
                 self._model.is_published,
                 self._model.pub_date <= now,
-                self._model.category.is_published,
+                (self._model.category_id.is_(None) | Category.is_published),
             )
             .order_by(self._model.pub_date.desc())
             .offset(skip)
@@ -27,7 +28,11 @@ class PostRepository:
         return query.all()
 
     def get_by_id(self, session: Session, post_id: int) -> Optional[Post]:
-        query = session.query(self._model).where(self._model.id == post_id)
+        query = (
+            session.query(self._model)
+            .options(joinedload(self._model.category))
+            .where(self._model.id == post_id)
+        )
         return query.scalar()
 
     def get_by_author(

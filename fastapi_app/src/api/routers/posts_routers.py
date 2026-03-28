@@ -16,9 +16,11 @@ router = APIRouter()
 
 @router.get("/", status_code=status.HTTP_200_OK, response_model=List[PostResponse])
 async def index(
+    skip: int = 0,
+    limit: int = 20,
     use_case: GetPostUseCase = Depends(get_posts_use_case),
 ) -> List[PostResponse]:
-    return await use_case.execute()
+    return await use_case.execute(skip=skip, limit=limit)
 
 
 @router.get(

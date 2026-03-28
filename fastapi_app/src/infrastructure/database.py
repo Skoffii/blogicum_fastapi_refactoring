@@ -4,10 +4,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 
+# BASE_DIR = Path(__file__).resolve().parent.parent.parent  # src -> fastapi_app -> корень
+# DB_PATH = BASE_DIR / "blog.db"
+
+# DATABASE_URL = f"sqlite:///{DB_PATH}"
+
 
 class Database:
     def __init__(self):
-        self._db_url = "sqlite:///../../db.sqlite3"
+        self._db_url = "sqlite:///blog.db"
         self._engine = create_engine(self._db_url)
 
     @contextmanager
