@@ -9,6 +9,8 @@ from infrastructure.repos.category_rep import CategoryRepository
 from infrastructure.models.categories_model import Category
 from schemas.posts import PostRequest, PostResponse, PostUpdate
 from schemas.users import UserResponse
+from core.exceptions.infrastructure_exceptions import *
+from core.exceptions.domain_exceptions import *
 
 
 class GetPostUseCase:
@@ -31,23 +33,25 @@ class GetPostByIdUseCase:
         self, post_id: int, cur_user_id: Optional[int] = None
     ) -> PostResponse:
         with self._database.session() as session:
-            post = self._repo.get_by_id(session=session, post_id=post_id)
+            try:
+                post = self._repo.get_by_id(session=session, post_id=post_id)
 
-            if not post:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+                can_view = False
+                if cur_user_id == post.author_id:
+                    can_view = True
+                elif (
+                    post.is_published
+                    and (post.category is None or post.category.is_published)
+                    and post.pub_date <= datetime.now()
+                ):
+                    can_view = True
 
-            can_view = False
-            if cur_user_id == post.author_id:
-                can_view = True
-            elif (
-                post.is_published
-                and (post.category is None or post.category.is_published)
-                and post.pub_date <= datetime.now()
-            ):
-                can_view = True
-
-            if not can_view:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+                if not can_view:
+                    raise PostAccessDenied
+            except PostAccessDenied:
+                raise UserPermissionDenied(cur_user_id=cur_user_id)
+            except PostNotFoundById:
+                raise PostNotFoundByIdException(post_id=post_id)
         return PostResponse.model_validate(obj=post)
 
 
@@ -60,13 +64,12 @@ class GetPostsByAuthorUseCase:
     async def execute(self, login: str, skip: int = 0, limit: int = 10) -> dict:
         with self._database.session() as session:
             user = self._user_repo.get_by_login(session=session, login=login)
-
-            if not user:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-            posts = self._repo.get_by_author(
-                session=session, author_id=user.id, skip=skip, limit=limit
-            )
+            try:
+                posts = self._repo.get_by_author(
+                    session=session, author_id=user.id, skip=skip, limit=limit
+                )
+            except UserDoesNotExist:
+                raise UserNotFoundByUsernameException(username=login)
 
         return {
             "user": UserResponse.model_validate(obj=user),
@@ -84,17 +87,15 @@ class GetPostsByCategoryUseCase:
         self, category_slug: str, skip: int = 0, limit: int = 10
     ) -> List[PostResponse]:
         with self._database.session() as session:
-            category = self._category_repo.get_by_slug(
-                session=session, slug=category_slug
-            )
-
-            if not category or not category.is_published:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
+            try:
+                category = self._category_repo.get_by_slug(
+                    session=session, slug=category_slug
+                )
+            except CategoryNotFoundByName:
+                raise CategoryNotFoundBySlugException(category_slug=category_slug)
             posts = self._repo.get_by_category(
                 session=session, category_id=category.id, skip=skip, limit=limit
             )
-
         return [PostResponse.model_validate(obj=post) for post in posts]
 
 
@@ -105,9 +106,16 @@ class CreatePostUseCase:
 
     async def execute(self, data: PostRequest, author_id: int) -> PostResponse:
         with self._database.session() as session:
-            post = self._repo.create_post(
-                session=session, data=data, author_id=author_id
-            )
+            try:
+                post = self._repo.create_post(
+                    session=session, data=data, author_id=author_id
+                )
+            except UserNotFoundById:
+                raise UserNotFoundByIdException(user_id=author_id)
+            except CategoryNotFoundByName:
+                raise CategoryNotFoundBySlugException(category_slug=data.category_name)
+            except CategoryNotPublished:
+                raise CategoryNotPublishedException(category_slug=data.category_name)
 
         return PostResponse.model_validate(obj=post)
 
@@ -121,15 +129,21 @@ class UpdatePostUseCase:
         self, post_id: int, data: PostUpdate, current_user_id: int
     ) -> PostResponse:
         with self._database.session() as session:
-            post = self._repo.get_by_id(session=session, post_id=post_id)
+            try:
+                post = self._repo.get_by_id(session=session, post_id=post_id)
 
-            if not post:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-            if current_user_id != post.author_id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-
-            post = self._repo.update_post(session=session, post=post, data=data)
+                if current_user_id != post.author_id:
+                    raise PostAccessDenied
+            except PostAccessDenied:
+                raise UserPermisionException(current_user_id=current_user_id)
+            except PostDoesNotExist:
+                raise PostNotFoundByIdException(post_id=post_id)
+            try:
+                post = self._repo.update_post(session=session, post=post, data=data)
+            except LocationNotFoundByName:
+                raise LocationNotFoundByNameException(location_name=data.location_name)
+            except CategoryNotFoundByName:
+                raise CategoryNotFoundBySlugException(category_slug=data.category_name)
 
         return PostResponse.model_validate(obj=post)
 
@@ -141,16 +155,13 @@ class DeletePostUseCase:
 
     async def execute(self, post_id: int, current_user_id: int) -> None:
         with self._database.session() as session:
-            post = self._repo.get_by_id(session=session, post_id=post_id)
+            try:
+                post = self._repo.get_by_id(session=session, post_id=post_id)
 
-            if not post:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                )
-
-            if current_user_id != post.author_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                )
-
+                if current_user_id != post.author_id:
+                    raise PostAccessDenied
+            except PostAccessDenied:
+                raise UserPermissionDenied(current_user_id=current_user_id)
+            except PostDoesNotExist:
+                raise PostNotFoundByIdException(post_id=post_id)
             self._repo.delete_post(session=session, post=post)

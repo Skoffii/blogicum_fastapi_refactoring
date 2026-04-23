@@ -1,8 +1,12 @@
 from typing import Type, List, Optional
 from sqlalchemy.orm import Session, joinedload
 
+from infrastructure.models.posts_model import Post
+from infrastructure.models.users_model import User
 from infrastructure.models.comments_model import Comment
 from schemas.comments import CommentRequest, CommentUpdate
+from core.exceptions.infrastructure_exceptions import *
+from core.exceptions.domain_exceptions import *
 
 
 class CommentRepository:
@@ -24,16 +28,27 @@ class CommentRepository:
             .options(joinedload(self._model.author))
             .where(self._model.id == comment_id)
         )
-        return query.scalar()
+        comment = query.scalar()
+        if not comment:
+            raise CommentNotFoundById
+        return comment
 
     def create_comment(
         self, session: Session, data: CommentRequest, author_id: int, post_id: int
     ) -> Comment:
+        post = session.query(Post).where(Post.id == post_id).scalar()
+        if not post:
+            raise PostNotFoundById
+        author = session.query(User).where(User.id == author_id).scalar()
+        if not author:
+            raise UserNotFoundById
+        
         new_comment = self._model(
             **data.model_dump(), author_id=author_id, post_id=post_id
         )
         session.add(new_comment)
-        session.commit
+        session.flush()
+        session.refresh(new_comment)
         return new_comment
 
     def update_comment(
@@ -42,10 +57,18 @@ class CommentRepository:
         up_comm = data.model_dump(exclude_unset=True)
         for key, value in up_comm.items():
             setattr(comment, key, value)
+        if data.author:
+            author = session.query(User).where(User.username == data.author)
+            if not author:
+                raise UserDoesNotExist
+        
         session.commit
         session.refresh(comment)
         return comment
 
     def delete_comment(self, session: Session, comment: Comment) -> None:
+        exist = self.get_by_id(session, comment.id)
+        if not exist:
+            raise CommentNotFound
         session.delete(comment)
         session.commit()

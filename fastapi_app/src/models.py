@@ -14,8 +14,8 @@ class Post(BaseModel):
     is_published: bool = True
     title: str = Field(max_length=256)
     text: str
-    location_id: int | None = None
-    category_id: int | None = None
+    location_name: str | None = None
+    category_name: str | None = None
     image: str | None = None
 
 
@@ -32,4 +32,5 @@ class Location(BaseModel):
 
 
 class Comment(BaseModel):
+    author_username: str
     text: str

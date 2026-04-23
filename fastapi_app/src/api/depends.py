@@ -1,6 +1,8 @@
 from domain.use_cases.posts_usecases import (
     GetPostUseCase,
     GetPostByIdUseCase,
+    GetPostsByAuthorUseCase,
+    GetPostsByCategoryUseCase,
     CreatePostUseCase,
     UpdatePostUseCase,
     DeletePostUseCase,
@@ -19,7 +21,9 @@ from domain.use_cases.category_usecases import (
     GetCategoryBySlugUseCase,
 )
 
-from domain.use_cases.location_usecases import GetLocationByIdUseCase
+from domain.use_cases.location_usecases import (
+    GetLocationByIdUseCase
+)
 
 from domain.use_cases.user_usecase import (
     GetUserByIdUseCase,
@@ -36,6 +40,14 @@ async def get_posts_use_case() -> GetPostUseCase:
 
 async def get_post_by_id_use_case() -> GetPostByIdUseCase:
     return GetPostByIdUseCase()
+
+
+async def get_posts_by_author_use_case() -> GetPostsByAuthorUseCase:
+    return GetPostsByAuthorUseCase()
+
+
+async def get_posts_by_category_use_case() -> GetPostsByCategoryUseCase:
+    return GetPostsByCategoryUseCase()
 
 
 async def create_post_use_case() -> CreatePostUseCase:
@@ -80,7 +92,6 @@ async def get_category_by_slug_use_case() -> GetCategoryBySlugUseCase:
 
 async def get_location_by_id() -> GetLocationByIdUseCase:
     return GetLocationByIdUseCase()
-
 
 async def get_user_by_id_use_case() -> GetUserByIdUseCase:
     return GetUserByIdUseCase()

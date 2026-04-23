@@ -10,4 +10,4 @@
    - выберете `Mark Directory as` -> `Source Root`
  - запустите файл main.py
    ## в vsCode:
- - из корневой папки запустите python fastapi_app/src/main.py
+ - из директории src запустите python main.py
