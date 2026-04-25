@@ -7,12 +7,10 @@ def valid_name(name: str):
         return name
     if len(name) < 1 or len(name) > 256:
         raise ValueError(
-            'Название локации должно быть длиннее 0 символов и короче 257 символов.'
+            "Название локации должно быть длиннее 0 символов и короче 257 символов."
         )
-    if re.search(r'<[a-z][\s\S]*>', name, re.IGNORECASE):
-        raise ValueError(
-            'Название локации не должно содержать HTML-теги.'
-        )
+    if re.search(r"<[a-z][\s\S]*>", name, re.IGNORECASE):
+        raise ValueError("Название локации не должно содержать HTML-теги.")
     return name
 
 
@@ -28,6 +26,7 @@ class LocationBase(BaseModel):
 
 class LocationRequest(LocationBase):
     """Для создания локации"""
+
     pass
 
 

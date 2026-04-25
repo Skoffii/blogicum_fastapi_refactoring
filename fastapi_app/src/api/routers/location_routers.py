@@ -18,9 +18,8 @@ from api.depends import (
     delete_location_use_case,
 )
 from core.exceptions.domain_exceptions import (
-    LocationNotFoundByIdException,
     LocationAlreadyExistException,
-    LocationNotFoundByIdException
+    LocationNotFoundByIdException,
 )
 
 router = APIRouter()
@@ -64,7 +63,7 @@ async def get_location_by_id(
 async def get_all_locations(
     skip: int = 0,
     limit: int = 20,
-    use_case: GetAllLocationsUseCase = Depends(get_all_locations_use_case)
+    use_case: GetAllLocationsUseCase = Depends(get_all_locations_use_case),
 ) -> List[LocationResponse]:
     try:
         return await use_case.execute(skip=skip, limit=limit)
@@ -89,7 +88,7 @@ async def get_all_locations(
 )
 async def create_location(
     data: LocationRequest,
-    use_case: CreateLocationUseCase = Depends(create_location_use_case)
+    use_case: CreateLocationUseCase = Depends(create_location_use_case),
 ) -> LocationResponse:
     try:
         return await use_case.execute(data=data)
@@ -154,7 +153,7 @@ async def update_location(
 )
 async def delete_location(
     location_id: int,
-    use_case: DeleteLocationUseCase = Depends(delete_location_use_case)
+    use_case: DeleteLocationUseCase = Depends(delete_location_use_case),
 ) -> None:
     try:
         await use_case.execute(location_id=location_id)

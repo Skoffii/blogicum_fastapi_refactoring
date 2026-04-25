@@ -10,12 +10,10 @@ def valid_title(title: str):
     len_title = len(title)
     if len_title < 5 or len_title > 40:
         raise ValueError(
-            'Заголовок поста должен быть длиннее 4 символов и короче 41 символа.'
+            "Заголовок поста должен быть длиннее 4 символов и короче 41 символа."
         )
-    if re.search(r'<[a-z][\s\S]*>', title, re.IGNORECASE):
-        raise ValueError(
-            'Заголовок не должен содержать HTML-теги.'
-        )
+    if re.search(r"<[a-z][\s\S]*>", title, re.IGNORECASE):
+        raise ValueError("Заголовок не должен содержать HTML-теги.")
     return title
 
 
@@ -23,22 +21,18 @@ def valid_text(text: str):
     if text is None:
         return text
     if len(text) < 1:
-        raise ValueError(
-            'Текст поста не может быть пустым.'
-        )
+        raise ValueError("Текст поста не может быть пустым.")
     if len(text) > 10000:
-        raise ValueError(
-            'Текст поста должен быть короче 10000 символов.'
-        )
+        raise ValueError("Текст поста должен быть короче 10000 символов.")
     return text
 
 
 def valid_slug(slug: str):
     if slug is None:
         return slug
-    if not re.match(r'^[-a-zA-Z0-9_]+$', slug):
+    if not re.match(r"^[-a-zA-Z0-9_]+$", slug):
         raise ValueError(
-            'Slug может содержать только латиницу, цифры, дефис и подчёркивание.'
+            "Slug может содержать только латиницу, цифры, дефис и подчёркивание."
         )
     return slug.lower()
 

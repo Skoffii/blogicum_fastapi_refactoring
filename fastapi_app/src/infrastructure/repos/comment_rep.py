@@ -34,7 +34,11 @@ class CommentRepository:
         return comment
 
     def create_comment(
-        self, session: Session, data: CommentRequest, author_id: int, post_id: int,
+        self,
+        session: Session,
+        data: CommentRequest,
+        author_id: int,
+        post_id: int,
     ) -> Comment:
         post = session.query(Post).where(Post.id == post_id).scalar()
         if not post:
@@ -42,7 +46,7 @@ class CommentRepository:
         author = session.query(User).where(User.id == author_id).scalar()
         if not author:
             raise UserNotFoundById
-        
+
         new_comment = self._model(
             **data.model_dump(), author_id=author_id, post_id=post_id
         )
@@ -61,7 +65,7 @@ class CommentRepository:
             author = session.query(User).where(User.username == data.author)
             if not author:
                 raise UserDoesNotExist
-        
+
         session.commit
         session.refresh(comment)
         return comment
@@ -73,7 +77,9 @@ class CommentRepository:
         session.delete(comment)
         session.commit()
 
-    def update_comment_image(self, session: Session, comment_id: int, image_filename: str) -> Post:
+    def update_comment_image(
+        self, session: Session, comment_id: int, image_filename: str
+    ) -> Post:
         comment = self.get_comment(session=session, comment_id=comment_id)
         comment.image = image_filename
         session.flush()

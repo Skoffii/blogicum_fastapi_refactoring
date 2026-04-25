@@ -14,11 +14,12 @@ class GetLocationByIdUseCase:
     async def execute(self, location_id: int) -> LocationResponse:
         with self._database.session() as session:
             try:
-                location = self._repo.get_by_id(session=session, location_id=location_id)
+                location = self._repo.get_by_id(
+                    session=session, location_id=location_id
+                )
             except LocationNotFoundById:
                 raise LocationNotFoundByIdException(location_id=location_id)
         return LocationResponse.model_validate(obj=location)
-    
 
 
 class GetAllLocationsUseCase:
@@ -40,9 +41,7 @@ class CreateLocationUseCase:
     async def execute(self, data: LocationRequest) -> LocationResponse:
         with self._database.session() as session:
             try:
-                location = self._repo.create_location(
-                    session=session,
-                    data=data)
+                location = self._repo.create_location(session=session, data=data)
                 session.commit()
             except LocationAlreadyExist:
                 raise LocationAlreadyExistException(location_name=data.name)
@@ -61,17 +60,21 @@ class UpdateLocationUseCase:
     ) -> LocationUpdate:
         with self._database.session() as session:
             try:
-                location = self._repo.get_by_id(session=session, location_id=location_id)
+                location = self._repo.get_by_id(
+                    session=session, location_id=location_id
+                )
                 updated_location = self._repo.update_location(
                     session=session,
                     location=location,
                     name=data.name,
-                    is_published=data.is_published
+                    is_published=data.is_published,
                 )
             except LocationNotFoundById:
                 raise LocationNotFoundByIdException(location_id=location.location_id)
             except LocationAlreadyExist:
-                raise LocationAlreadyExistException(location_name=updated_location.location_name)
+                raise LocationAlreadyExistException(
+                    location_name=updated_location.location_name
+                )
         return LocationResponse.model_validate(updated_location)
 
 
@@ -83,7 +86,9 @@ class DeleteLocationUseCase:
     async def execute(self, location_id: int) -> None:
         with self._database.session() as session:
             try:
-                location = self._repo.get_by_id(session=session, location_id=location_id)
+                location = self._repo.get_by_id(
+                    session=session, location_id=location_id
+                )
                 self._repo.delete_location(session=session, location=location)
             except LocationNotFoundById:
                 raise LocationNotFoundByIdException(location_id=location_id)

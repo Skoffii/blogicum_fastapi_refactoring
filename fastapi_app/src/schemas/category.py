@@ -7,7 +7,7 @@ def valid_title(title: str):
         return title
     if len(title) < 1 or len(title) > 256:
         raise ValueError(
-            'Название категории должно быть длиннее 0 символов и короче 257 символов.'
+            "Название категории должно быть длиннее 0 символов и короче 257 символов."
         )
     return title
 
@@ -16,12 +16,10 @@ def valid_slug(slug: str):
     if slug is None:
         return slug
     if len(slug) < 1 or len(slug) > 200:
+        raise ValueError("Slug должен быть длиннее 0 символов и короче 201 символа.")
+    if not re.match(r"^[-a-zA-Z0-9_]+$", slug):
         raise ValueError(
-            'Slug должен быть длиннее 0 символов и короче 201 символа.'
-        )
-    if not re.match(r'^[-a-zA-Z0-9_]+$', slug):
-        raise ValueError(
-            'Slug может содержать только латиницу, цифры, дефис и подчёркивание.'
+            "Slug может содержать только латиницу, цифры, дефис и подчёркивание."
         )
     return slug.lower()
 
@@ -30,13 +28,9 @@ def valid_description(description: str):
     if description is None:
         return description
     if len(description) < 1:
-        raise ValueError(
-            'Описание категории не может быть пустым.'
-        )
+        raise ValueError("Описание категории не может быть пустым.")
     if len(description) > 1000:
-        raise ValueError(
-            'Описание категории должно быть короче 1001 символа.'
-        )
+        raise ValueError("Описание категории должно быть короче 1001 символа.")
     return description
 
 

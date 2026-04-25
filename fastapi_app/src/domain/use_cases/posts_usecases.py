@@ -10,7 +10,6 @@ from infrastructure.database import database
 from infrastructure.repos.post_rep import PostRepository
 from infrastructure.repos.user_rep import UserRepository
 from infrastructure.repos.category_rep import CategoryRepository
-from infrastructure.models.categories_model import Category
 from schemas.posts import PostRequest, PostResponse, PostUpdate, PostImageResponse
 from schemas.users import UserResponse
 from core.exceptions.infrastructure_exceptions import *
@@ -199,7 +198,11 @@ class AddPostImageUseCase:
 
     async def execute(self, image: UploadFile, post_id: int) -> PostImageResponse:
         os.makedirs(self.image_folder, exist_ok=True)
-        if not image.filename or image.filename.split(".")[-1].lower() not in ["jpeg", "jpg", "png"]:
+        if not image.filename or image.filename.split(".")[-1].lower() not in [
+            "jpeg",
+            "jpg",
+            "png",
+        ]:
             raise UploadFileIsNotImageException()
         file_extension = image.filename.split(".")[-1]
         new_image_name: str = f"{uuid4().hex}.{file_extension}"
@@ -212,9 +215,7 @@ class AddPostImageUseCase:
             except PostNotFoundById:
                 raise PostNotFoundByIdException(post_id=post_id)
             self._repo.update_post_image(
-                session=session,
-                post_id=post.post_id,
-                image_filename=new_image_name
+                session=session, post_id=post.post_id, image_filename=new_image_name
             )
 
         return PostImageResponse(image=new_image_name)

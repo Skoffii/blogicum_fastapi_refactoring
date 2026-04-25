@@ -68,7 +68,9 @@ class PostRepository:
             .offset(skip)
             .limit(limit)
         )
-        category = session.query(Category).where(Category.slug == category_slug).scalar()
+        category = (
+            session.query(Category).where(Category.slug == category_slug).scalar()
+        )
         if not category:
             raise CategoryNotFoundById
         return query.all()
@@ -79,18 +81,25 @@ class PostRepository:
             if not author:
                 raise UserNotFoundById
             if data.category_slug:
-                category = session.query(Category).where(Category.slug == data.category_slug).scalar()
+                category = (
+                    session.query(Category)
+                    .where(Category.slug == data.category_slug)
+                    .scalar()
+                )
                 if not category:
                     raise CategoryNotFoundByName
                 if not category.is_published:
                     raise CategoryNotPublished
 
             if data.location_id:
-                location = session.query(Location).where(Location.id == data.location_id).scalar()
+                location = (
+                    session.query(Location)
+                    .where(Location.id == data.location_id)
+                    .scalar()
+                )
                 if not location:
                     raise LocationNotFoundById
-                
-        
+
             new_post = self._model(
                 **data.model_dump(),
                 author_id=author_id,
@@ -100,12 +109,10 @@ class PostRepository:
             session.flush()
             session.refresh(new_post)
             return new_post
-        
+
         except IntegrityError as e:
             session.rollback()
-            raise DatabaseIntegrityError(
-                original_error=e
-            )
+            raise DatabaseIntegrityError(original_error=e)
 
     def update_post(self, session: Session, post: Post, data: PostUpdate) -> Post:
         up_post = data.model_dump(exclude_unset=True)
@@ -115,11 +122,17 @@ class PostRepository:
         if not exist:
             raise PostDoesNotExist
         if data.location_id:
-            location = session.query(Location).where(Location.id == data.location_id).scalar()
+            location = (
+                session.query(Location).where(Location.id == data.location_id).scalar()
+            )
             if not location:
                 raise LocationNotFoundById
         if data.category_slug:
-            category = session.query(Category).where(Category.slug == data.category_slug).scalar()
+            category = (
+                session.query(Category)
+                .where(Category.slug == data.category_slug)
+                .scalar()
+            )
             if not category:
                 raise CategoryNotFoundByName
         return post
@@ -130,7 +143,9 @@ class PostRepository:
             raise PostDoesNotExist
         session.delete(post)
 
-    def update_post_image(self, session: Session, post_id: int, image_filename: str) -> Post:
+    def update_post_image(
+        self, session: Session, post_id: int, image_filename: str
+    ) -> Post:
         post = self.get_by_id(session=session, post_id=post_id)
         post.image = image_filename
         session.flush()

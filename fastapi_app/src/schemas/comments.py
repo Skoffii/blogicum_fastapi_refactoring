@@ -7,17 +7,11 @@ def valid_text(text: str):
     if text is None:
         return text
     if len(text) < 1:
-        raise ValueError(
-            'Текст комментария не может быть пустым.'
-        )
+        raise ValueError("Текст комментария не может быть пустым.")
     if len(text) > 1000:
-        raise ValueError(
-            'Текст комментария должен быть короче 1001 символа.'
-        )
-    if re.search(r'<[a-z][\s\S]*>', text, re.IGNORECASE):
-        raise ValueError(
-            'Текст комментария не должен содержать HTML-теги.'
-        )
+        raise ValueError("Текст комментария должен быть короче 1001 символа.")
+    if re.search(r"<[a-z][\s\S]*>", text, re.IGNORECASE):
+        raise ValueError("Текст комментария не должен содержать HTML-теги.")
     return text
 
 

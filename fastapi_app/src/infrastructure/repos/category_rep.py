@@ -9,7 +9,9 @@ class CategoryRepository:
     def __init__(self):
         self._model: Type[Category] = Category
 
-    def get_all(self, session: Session, skip: int = 0, limit: int = 20) -> List[Category]:
+    def get_all(
+        self, session: Session, skip: int = 0, limit: int = 20
+    ) -> List[Category]:
         query = session.query(self._model).offset(skip).limit(limit)
         return query.all()
 
@@ -27,7 +29,14 @@ class CategoryRepository:
             raise CategoryNotFoundById
         return category
 
-    def create_category(self, session: Session, title: str, slug: str, description: str, is_published: bool = True) -> Category:
+    def create_category(
+        self,
+        session: Session,
+        title: str,
+        slug: str,
+        description: str,
+        is_published: bool = True,
+    ) -> Category:
         existing = session.query(self._model).where(self._model.slug == slug).scalar()
         if existing:
             raise CategoryAlreadyExist
@@ -42,9 +51,19 @@ class CategoryRepository:
         session.refresh(new_category)
         return new_category
 
-    def update_category(self, session: Session, category: Category, title: str | None = None, slug: str | None = None, description: str | None = None, is_published: bool | None = None) -> Category:
+    def update_category(
+        self,
+        session: Session,
+        category: Category,
+        title: str | None = None,
+        slug: str | None = None,
+        description: str | None = None,
+        is_published: bool | None = None,
+    ) -> Category:
         if slug and slug != category.slug:
-            existing = session.query(self._model).where(self._model.slug == slug).scalar()
+            existing = (
+                session.query(self._model).where(self._model.slug == slug).scalar()
+            )
             if existing:
                 raise CategoryAlreadyExist
             category.slug = slug

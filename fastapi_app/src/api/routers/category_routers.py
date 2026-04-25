@@ -30,22 +30,22 @@ router = APIRouter()
 
 
 @router.get(
-        "/categories/",
-        response_model=List[CategoryResponse],
-        responses={
-            200: {"model": CategoryResponse},
-            401: {"model": ErrorResponse},
-            404: {"model": ErrorResponse},
-            422: {"model": ValidationErrorResponse},
-            500: {"model": ErrorResponse},
-        },
+    "/categories/",
+    response_model=List[CategoryResponse],
+    responses={
+        200: {"model": CategoryResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_all_categories(
     skip: int = 0,
     limit: int = 20,
     use_case: GetAllCategoriesUseCase = Depends(get_all_categories_use_case),
 ) -> List[CategoryResponse]:
-    try: 
+    try:
         return await use_case.execute(skip=skip, limit=limit)
     except Exception as exc:
         raise HTTPException(
@@ -189,7 +189,7 @@ async def update_category(
         404: {"model": ErrorResponse},
         422: {"model": ValidationErrorResponse},
         500: {"model": ErrorResponse},
-    }
+    },
 )
 async def delete_category(
     category_id: int,

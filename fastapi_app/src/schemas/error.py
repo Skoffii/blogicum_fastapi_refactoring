@@ -5,7 +5,9 @@ from typing import Optional, Dict, Any
 class ErrorDetail(BaseModel):
     message: str
     error_code: str
-    details: Dict[str, Any] = Field(default_factory=dict,)
+    details: Dict[str, Any] = Field(
+        default_factory=dict,
+    )
     error_type: str | None = None
 
 

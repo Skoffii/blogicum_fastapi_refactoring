@@ -5,8 +5,12 @@ from infrastructure.models.users_model import User
 from schemas.users import UserUpdate
 from datetime import datetime
 from core.exceptions.infrastructure_exceptions import (
-    UserNotFoundById, UserNotFoundByUsername,
-    UserAlreadyExist, UserDoesNotExist, UserEmailAlreadyExist)
+    UserNotFoundById,
+    UserNotFoundByUsername,
+    UserAlreadyExist,
+    UserDoesNotExist,
+    UserEmailAlreadyExist,
+)
 
 
 class UserRepository:
@@ -48,7 +52,9 @@ class UserRepository:
         except UserNotFoundByUsername:
             pass
         if email:
-            exist_email = session.query(self._model).where(self._model.email == email).scalar()
+            exist_email = (
+                session.query(self._model).where(self._model.email == email).scalar()
+            )
             if exist_email:
                 raise UserEmailAlreadyExist
         new_user = self._model(
@@ -74,7 +80,11 @@ class UserRepository:
         if not exist:
             raise UserDoesNotExist
         if data.email:
-            exist_email = session.query(self._model).where(self._model.email == data.email).scalar()
+            exist_email = (
+                session.query(self._model)
+                .where(self._model.email == data.email)
+                .scalar()
+            )
             if exist_email:
                 raise UserEmailAlreadyExist
         for key, value in update_user.items():

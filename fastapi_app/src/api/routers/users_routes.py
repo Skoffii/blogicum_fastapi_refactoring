@@ -135,7 +135,7 @@ async def update_user(
 
 @router.delete(
     "/user/{user_id}/delete",
-    responses = {
+    responses={
         204: {"detail": "NO_CONTENT"},
         401: {"model": ErrorResponse},
         403: {"model": ErrorResponse},

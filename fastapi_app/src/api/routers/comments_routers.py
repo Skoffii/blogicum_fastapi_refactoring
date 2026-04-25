@@ -2,7 +2,12 @@ from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List
 from fastapi import UploadFile, File
 
-from schemas.comments import CommentRequest, CommentUpdate, CommentResponse, CommentImageResponse
+from schemas.comments import (
+    CommentRequest,
+    CommentUpdate,
+    CommentResponse,
+    CommentImageResponse,
+)
 from schemas.error import ErrorResponse, ValidationErrorResponse
 from domain.use_cases.comment_usecase import (
     GetCommentByIdUseCase,
@@ -159,6 +164,7 @@ async def create_comment(
             detail=str(exc),
         )
 
+
 @router.post(
     "/posts/{post_id}/comments/{comment_id}/image",
     response_model=CommentImageResponse,
@@ -272,4 +278,3 @@ async def delete_comment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         )
-

@@ -48,15 +48,17 @@ class CreateUserUseCase:
     async def execute(self, data: UserRequest) -> UserResponse:
         with self._database.session() as session:
             try:
-                user = self._repo.get_by_login(
-                    session=session, login=data.username
-                )
+                user = self._repo.get_by_login(session=session, login=data.username)
             except UserAlreadyExist:
                 raise UserAlreadyExistExeption(username=data.username)
             except UserNotFoundByUsername:
                 pass
             if data.email:
-                existing_email = session.query(self._repo._model).where(self._repo._model.email == data.email).scalar()
+                existing_email = (
+                    session.query(self._repo._model)
+                    .where(self._repo._model.email == data.email)
+                    .scalar()
+                )
                 if existing_email:
                     raise UserEmailIsNotUniqueException(user_email=data.email)
 
@@ -90,7 +92,11 @@ class UpdateUserUseCase:
             except UserDoesNotExist:
                 raise UserNotFoundByIdException(user_id=user_id)
             if data.email and data.email != user.email:
-                existing_email = session.query(self._repo._model).where(self._repo._model.email == data.email).scalar()
+                existing_email = (
+                    session.query(self._repo._model)
+                    .where(self._repo._model.email == data.email)
+                    .scalar()
+                )
                 if existing_email:
                     raise UserEmailIsNotUniqueException(user_email=data.email)
             user = self._repo.update_user(session=session, user=user, data=data)

@@ -9,7 +9,12 @@ from fastapi import UploadFile
 from infrastructure.database import database
 from infrastructure.repos.comment_rep import CommentRepository
 from infrastructure.repos.post_rep import PostRepository
-from schemas.comments import CommentRequest, CommentResponse, CommentUpdate, CommentImageResponse
+from schemas.comments import (
+    CommentRequest,
+    CommentResponse,
+    CommentUpdate,
+    CommentImageResponse,
+)
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
 
@@ -40,7 +45,7 @@ class GetCommentsByPostUseCase:
                 self._post_repo.get_by_id(session=session, post_id=post_id)
             except PostNotFoundById:
                 raise PostNotFoundByIdException(post_id=post_id)
-            
+
             comments = self._repo.get_comments_by_post(session=session, post_id=post_id)
 
         return [CommentResponse.model_validate(obj=comment) for comment in comments]
@@ -59,8 +64,8 @@ class CreateCommentUseCase:
             try:
                 self._post_repo.get_by_id(session=session, post_id=post_id)
                 comment = self._repo.create_comment(
-                    session=session, 
-                    data=data, 
+                    session=session,
+                    data=data,
                     author_id=author_id,
                     post_id=post_id,
                 )
@@ -87,14 +92,12 @@ class UpdateCommentUseCase:
                 if current_user_id != comment.author_id:
                     raise UserPermisionException(current_user_id=str(current_user_id))
                 updated_comment = self._repo.update_comment(
-                    session=session, 
-                    comment=comment, 
-                    data=data
+                    session=session, comment=comment, data=data
                 )
             except CommentNotFound:
                 raise CommentNotFoundByIdException(comment_id=comment_id)
             except UserPermissionDenied:
-                raise UserPermisionException (current_user_id=current_user_id)
+                raise UserPermisionException(current_user_id=current_user_id)
         return CommentResponse.model_validate(obj=updated_comment)
 
 
@@ -117,11 +120,13 @@ class DeleteCommentUseCase:
                 raise UserPermisionException(current_user_id=current_user_id)
             self._repo.delete_comment(session=session, comment=comment)
 
+
 class GetCommentImageUseCase:
     def __init__(self) -> None:
         self._database = database
         self._repo = CommentRepository()
         self.image_folder = "./../images"
+
     async def execute(self, comment_id: int) -> FileResponse:
         try:
             with self._database.session() as session:
@@ -155,8 +160,6 @@ class AddCommentImageUseCase:
             except CommentNotFound:
                 raise CommentNotFoundByIdException(comment_id=comment_id)
             self._repo.update_comment_image(
-                session=session,
-                comment_id=comment_id,
-                image_filename=new_image_name
+                session=session, comment_id=comment_id, image_filename=new_image_name
             )
         return CommentImageResponse(image=new_image_name)

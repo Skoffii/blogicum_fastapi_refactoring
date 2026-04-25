@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from infrastructure.models.locations_model import Location
 from core.exceptions.infrastructure_exceptions import *
-from schemas.location import LocationRequest, LocationUpdate
+from schemas.location import LocationRequest
 
 
 class LocationRepository:
@@ -24,12 +24,16 @@ class LocationRepository:
             raise LocationNotFoundByName
         return location
 
-    def get_all(self, session: Session, skip: int = 0, limit: int = 20) -> List[Location]:
+    def get_all(
+        self, session: Session, skip: int = 0, limit: int = 20
+    ) -> List[Location]:
         query = session.query(self._model).offset(skip).limit(limit)
         return query.all()
 
     def create_location(self, session: Session, data: LocationRequest) -> Location:
-        existing = session.query(self._model).where(self._model.name == data.name).scalar()
+        existing = (
+            session.query(self._model).where(self._model.name == data.name).scalar()
+        )
         if existing:
             raise LocationAlreadyExist
         new_location = self._model(name=data.name, is_published=data.is_published)
@@ -38,9 +42,17 @@ class LocationRepository:
         session.refresh(new_location)
         return new_location
 
-    def update_location(self, session: Session, location: Location, name: str | None = None, is_published: bool | None = None) -> Location:
+    def update_location(
+        self,
+        session: Session,
+        location: Location,
+        name: str | None = None,
+        is_published: bool | None = None,
+    ) -> Location:
         if name and name != location.name:
-            existing = session.query(self._model).where(self._model.name == name).scalar()
+            existing = (
+                session.query(self._model).where(self._model.name == name).scalar()
+            )
             if existing:
                 raise LocationAlreadyExist
             location.name = name

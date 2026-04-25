@@ -12,7 +12,7 @@ from domain.use_cases.posts_usecases import (
     UpdatePostUseCase,
     DeletePostUseCase,
     GetPostImageUseCase,
-    AddPostImageUseCase
+    AddPostImageUseCase,
 )
 from api.depends import (
     get_posts_use_case,
@@ -23,7 +23,7 @@ from api.depends import (
     update_post_use_case,
     delete_post_use_case,
     get_post_image_use_case,
-    add_post_image_use_case
+    add_post_image_use_case,
 )
 from core.exceptions.domain_exceptions import (
     PostNotFoundByIdException,
@@ -141,7 +141,9 @@ async def get_posts_by_category(
     use_case: GetPostsByCategoryUseCase = Depends(get_posts_by_category_use_case),
 ) -> List[PostResponse]:
     try:
-        return await use_case.execute(category_slug=category_slug, skip=skip, limit=limit)
+        return await use_case.execute(
+            category_slug=category_slug, skip=skip, limit=limit
+        )
     except CategoryNotFoundBySlugException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -181,6 +183,7 @@ async def get_post_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         )
+
 
 @router.post(
     "/posts/create",
@@ -239,7 +242,6 @@ async def add_post_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         )
-
 
 
 @router.put(
