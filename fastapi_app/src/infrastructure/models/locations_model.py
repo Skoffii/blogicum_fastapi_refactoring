@@ -10,7 +10,6 @@ class Location(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
-
     posts: Mapped[list["Post"]] = relationship(
         back_populates="location", cascade="all, delete-orphan"
     )

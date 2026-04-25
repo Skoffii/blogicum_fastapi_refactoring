@@ -22,6 +22,7 @@ class Comment(Base):
     author_id: Mapped[str] = mapped_column(
         String, ForeignKey("auth_user.id"), nullable=False
     )
+    image: Mapped[str] = mapped_column(String, nullable=True)
 
     post: Mapped["Post"] = relationship(back_populates="comments")
     author: Mapped["User"] = relationship(back_populates="comments")

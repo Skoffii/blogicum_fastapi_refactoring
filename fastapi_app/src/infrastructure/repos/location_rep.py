@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from infrastructure.models.locations_model import Location
 from core.exceptions.infrastructure_exceptions import *
+from schemas.location import LocationRequest, LocationUpdate
 
 
 class LocationRepository:
@@ -27,11 +28,11 @@ class LocationRepository:
         query = session.query(self._model).offset(skip).limit(limit)
         return query.all()
 
-    def create_location(self, session: Session, name: str, is_published: bool = True) -> Location:
-        existing = session.query(self._model).where(self._model.name == name).scalar()
+    def create_location(self, session: Session, data: LocationRequest) -> Location:
+        existing = session.query(self._model).where(self._model.name == data.name).scalar()
         if existing:
             raise LocationAlreadyExist
-        new_location = self._model(name=name, is_published=is_published)
+        new_location = self._model(name=data.name, is_published=data.is_published)
         session.add(new_location)
         session.flush()
         session.refresh(new_location)

@@ -1,6 +1,6 @@
 from infrastructure.database import database
 from infrastructure.repos.category_rep import CategoryRepository
-from schemas.category import CategoryResponse
+from schemas.category import CategoryResponse, CategoryUpdate, CategoryRequest
 from typing import List
 
 from core.exceptions.infrastructure_exceptions import *
@@ -52,58 +52,50 @@ class CreateCategoryUseCase:
         self._repo = CategoryRepository()
 
     async def execute(
-        self, 
-        title: str, 
-        slug: str, 
-        description: str, 
-        is_published: bool = True
+        self,
+        data: CategoryRequest,
     ) -> CategoryResponse:
         with self._database.session() as session:
             try:
                 category = self._repo.create_category(
                     session=session,
-                    title=title,
-                    slug=slug,
-                    description=description,
-                    is_published=is_published
+                    title=data.title,
+                    slug=data.slug,
+                    description=data.description,
+                    is_published=data.is_published
                 )
                 session.commit()
             except CategoryAlreadyExist:
-                raise CategoryAlreadyExistException(category_slug=slug)
-        
+                raise CategoryAlreadyExistException(slug=data.slug)
         return CategoryResponse.model_validate(category)
 
+class UpdateCategoryUseCase:
+    def __init__(self):
+        self._database = database
+        self._repo = CategoryRepository()
 
-async def execute(
-        self,
-        category_id: int,
-        title: str | None = None,
-        slug: str | None = None,
-        description: str | None = None,
-        is_published: bool | None = None
+    async def execute(
+            self,
+            slug: str,
+            data: CategoryUpdate,
     ) -> CategoryResponse:
         with self._database.session() as session:
             try:
-                # 1. Находим категорию
-                category = self._repo.get_by_id(session=session, category_id=category_id)
-                
-                # 2. Обновляем данные
+                category = self._repo.get_by_slug(session=session, slug=slug)
                 updated_category = self._repo.update_category(
                     session=session,
                     category=category,
-                    title=title,
-                    slug=slug,
-                    description=description,
-                    is_published=is_published
+                    title=data.title,
+                    slug=data.slug,
+                    description=data.description,
+                    is_published=data.is_published
                 )
-                
-                # 3. Сохраняем изменения
-                session.commit()
-                
-            except CategoryNotFoundById:
-                raise CategoryNotFoundByIdException(category_id=category_id)
+            except CategoryNotFoundByName:
+                raise CategoryNotFoundBySlugException(category_slug=slug)
             except CategoryAlreadyExist:
-                raise CategoryAlreadyExistException(slug=slug)
+                raise CategoryAlreadyExistException(slug=data.slug)
+            session.commit()
+        return CategoryResponse.model_validate(updated_category)
 
 
 class DeleteCategoryUseCase:
@@ -116,6 +108,5 @@ class DeleteCategoryUseCase:
             try:
                 category = self._repo.get_by_id(session=session, category_id=category_id)
                 self._repo.delete_category(session=session, category=category)
-                session.commit()
             except CategoryNotFoundById:
                 raise CategoryNotFoundByIdException(category_id=category_id)

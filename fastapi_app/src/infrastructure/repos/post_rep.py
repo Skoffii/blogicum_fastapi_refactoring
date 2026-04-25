@@ -24,7 +24,7 @@ class PostRepository:
             .where(
                 self._model.is_published,
                 self._model.pub_date <= now,
-                (self._model.category_id.is_(None) | Category.is_published),
+                (self._model.category_slug.is_(None) | Category.is_published),
             )
             .order_by(self._model.pub_date.desc())
             .offset(skip)
@@ -59,16 +59,16 @@ class PostRepository:
         return query.all()
 
     def get_by_category(
-        self, session: Session, category_id: int, skip: int = 0, limit: int = 20
+        self, session: Session, category_slug: str, skip: int = 0, limit: int = 20
     ) -> List[Post]:
         query = (
             session.query(self._model)
-            .where(self._model.category_id == category_id)
+            .where(self._model.category_slug == category_slug)
             .order_by(self._model.pub_date.desc())
             .offset(skip)
             .limit(limit)
         )
-        category = session.query(Category).where(Category.id == category_id).scalar()
+        category = session.query(Category).where(Category.slug == category_slug).scalar()
         if not category:
             raise CategoryNotFoundById
         return query.all()
@@ -78,8 +78,8 @@ class PostRepository:
             author = session.query(User).where(User.id == author_id).scalar()
             if not author:
                 raise UserNotFoundById
-            if data.category_id:
-                category = session.query(Category).where(Category.id == data.category_name).scalar()
+            if data.category_slug:
+                category = session.query(Category).where(Category.slug == data.category_slug).scalar()
                 if not category:
                     raise CategoryNotFoundByName
                 if not category.is_published:
@@ -94,7 +94,6 @@ class PostRepository:
             new_post = self._model(
                 **data.model_dump(),
                 author_id=author_id,
-                pub_date=datetime.now(),
                 created_at=datetime.now(),
             )
             session.add(new_post)
@@ -115,12 +114,12 @@ class PostRepository:
         exist = self.get_by_id(session, post.id)
         if not exist:
             raise PostDoesNotExist
-        if data.location:
-            location = session.query(Location).where(Location.name == data.location_name).scalar()
+        if data.location_id:
+            location = session.query(Location).where(Location.id == data.location_id).scalar()
             if not location:
-                raise LocationNotFoundByName
-        if data.category:
-            category = session.query(Category).where(Category.slug == data.category_name).scalar()
+                raise LocationNotFoundById
+        if data.category_slug:
+            category = session.query(Category).where(Category.slug == data.category_slug).scalar()
             if not category:
                 raise CategoryNotFoundByName
         return post
@@ -130,3 +129,9 @@ class PostRepository:
         if not exist:
             raise PostDoesNotExist
         session.delete(post)
+
+    def update_post_image(self, session: Session, post_id: int, image_filename: str) -> Post:
+        post = self.get_by_id(session=session, post_id=post_id)
+        post.image = image_filename
+        session.flush()
+        return post

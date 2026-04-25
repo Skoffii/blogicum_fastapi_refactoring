@@ -1,13 +1,17 @@
 from fastapi import APIRouter, status, HTTPException, Depends
 from typing import List
+from fastapi import UploadFile, File
 
-from schemas.comments import CommentRequest, CommentUpdate, CommentResponse
+from schemas.comments import CommentRequest, CommentUpdate, CommentResponse, CommentImageResponse
+from schemas.error import ErrorResponse, ValidationErrorResponse
 from domain.use_cases.comment_usecase import (
     GetCommentByIdUseCase,
     GetCommentsByPostUseCase,
     CreateCommentUseCase,
     UpdateCommentUseCase,
     DeleteCommentUseCase,
+    GetCommentImageUseCase,
+    AddCommentImageUseCase,
 )
 from api.depends import (
     get_comment_by_id_use_case,
@@ -15,22 +19,32 @@ from api.depends import (
     create_comment_use_case,
     update_comment_use_case,
     delete_comment_use_case,
+    get_comment_image_use_case,
+    add_comment_image_use_case,
 )
 from core.exceptions.domain_exceptions import (
     CommentNotFoundByIdException,
     UserPermisionException,
     PostNotFoundByIdException,
+    CommentHasNoImageException,
 )
 
-router = APIRouter(prefix="/api/v1")
+router = APIRouter()
 
 
 @router.get(
-    "/comments/{comment_id}",
-    status_code=status.HTTP_200_OK,
+    "posts/{post_id}/comments/{comment_id}",
     response_model=CommentResponse,
+    responses={
+        200: {"model": CommentResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_comment_by_id(
+    post_id: int,
     comment_id: int,
     use_case: GetCommentByIdUseCase = Depends(get_comment_by_id_use_case),
 ) -> CommentResponse:
@@ -39,14 +53,25 @@ async def get_comment_by_id(
     except CommentNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
 @router.get(
     "/posts/{post_id}/comments",
-    status_code=status.HTTP_200_OK,
     response_model=List[CommentResponse],
+    responses={
+        200: {"model": List[CommentResponse]},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_comments_by_post(
     post_id: int,
@@ -57,14 +82,54 @@ async def get_comments_by_post(
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+
+@router.get(
+    "/posts/{comment_id}/images",
+    response_model=CommentImageResponse,
+    responses={
+        200: {"model": CommentImageResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def get_post_image(
+    comment_id: int,
+    use_case: GetCommentImageUseCase = Depends(get_comment_image_use_case),
+) -> CommentImageResponse:
+    try:
+        return await use_case.execute(comment_id=comment_id)
+    except CommentHasNoImageException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
 @router.post(
-    "/posts/{post_id}/comments/create",
-    status_code=status.HTTP_201_CREATED,
+    "/posts/{post_id}/comments/{comment_id}",
     response_model=CommentResponse,
+    responses={
+        201: {"model": CommentResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def create_comment(
     post_id: int,
@@ -81,22 +146,69 @@ async def create_comment(
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+@router.post(
+    "/posts/{post_id}/comments/{comment_id}/image",
+    response_model=CommentImageResponse,
+    responses={
+        201: {"model": CommentImageResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def add_comment_image(
+    comment_id: int,
+    post_id: int,
+    image: UploadFile = File(...),
+    use_case: AddCommentImageUseCase = Depends(add_comment_image_use_case),
+) -> CommentImageResponse:
+    try:
+        return await use_case.execute(image=image, comment_id=comment_id)
+    except CommentNotFoundByIdException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except CommentHasNoImageException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
 @router.put(
-    "/comments/{comment_id}/edit",
-    status_code=status.HTTP_200_OK,
+    "posts/{post_id}/comments/{comment_id}",
     response_model=CommentResponse,
+    responses={
+        200: {"model": CommentResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def update_comment(
     comment_id: int,
+    post_id: int,
     comment: CommentUpdate,
     current_user_id: int,
     use_case: UpdateCommentUseCase = Depends(update_comment_use_case),
@@ -104,24 +216,36 @@ async def update_comment(
     try:
         return await use_case.execute(
             comment_id=comment_id,
+            post_id=post_id,
             data=comment,
             current_user_id=current_user_id,
         )
     except CommentNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
 @router.delete(
     "/comments/{comment_id}/delete",
-    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        204: {"detail": "NO_CONTENT"},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def delete_comment(
     comment_id: int,
@@ -136,10 +260,16 @@ async def delete_comment(
     except CommentNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.detail(),
         )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+

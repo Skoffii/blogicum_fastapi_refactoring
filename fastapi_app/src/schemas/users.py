@@ -78,12 +78,12 @@ class UserBase(BaseModel):
 
 
 class UserRequest(UserBase):
-    password: SecretStr = Field(...)
+    password: SecretStr = Field(..., min_length=8, max_length=72)
 
-    @field_validator("password", mode="after")
+    @field_validator("password", mode="before")
     @staticmethod
-    def check_password(password: SecretStr):
-        return valid_password(password.get_secret_value())
+    def check_password(password: str) -> str:
+        return valid_password(password)
 
 
 class UserUpdate(BaseModel):

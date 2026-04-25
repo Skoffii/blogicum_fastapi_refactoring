@@ -21,11 +21,11 @@ class Post(Base):
     author_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("auth_user.id", ondelete="CASCADE"), nullable=False
     )
-    location_id: Mapped[int] = mapped_column(
+    location_id: Mapped[str] = mapped_column(
         Integer, ForeignKey("blog_location.id", ondelete="SET NULL"), nullable=True
     )
-    category_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("blog_category.id", ondelete="SET NULL"), nullable=True
+    category_slug: Mapped[str] = mapped_column(
+        Integer, ForeignKey("blog_category.slug", ondelete="SET NULL"), nullable=True
     )
 
     author: Mapped["User"] = relationship(back_populates="posts")

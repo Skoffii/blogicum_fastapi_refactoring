@@ -30,11 +30,11 @@ class CommentRepository:
         )
         comment = query.scalar()
         if not comment:
-            raise CommentNotFoundById
+            raise CommentNotFound
         return comment
 
     def create_comment(
-        self, session: Session, data: CommentRequest, author_id: int, post_id: int
+        self, session: Session, data: CommentRequest, author_id: int, post_id: int,
     ) -> Comment:
         post = session.query(Post).where(Post.id == post_id).scalar()
         if not post:
@@ -72,3 +72,9 @@ class CommentRepository:
             raise CommentNotFound
         session.delete(comment)
         session.commit()
+
+    def update_comment_image(self, session: Session, comment_id: int, image_filename: str) -> Post:
+        comment = self.get_comment(session=session, comment_id=comment_id)
+        comment.image = image_filename
+        session.flush()
+        return comment

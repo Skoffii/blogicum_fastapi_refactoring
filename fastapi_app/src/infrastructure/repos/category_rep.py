@@ -8,7 +8,7 @@ from core.exceptions.infrastructure_exceptions import *
 class CategoryRepository:
     def __init__(self):
         self._model: Type[Category] = Category
-    
+
     def get_all(self, session: Session, skip: int = 0, limit: int = 20) -> List[Category]:
         query = session.query(self._model).offset(skip).limit(limit)
         return query.all()
@@ -17,7 +17,7 @@ class CategoryRepository:
         query = session.query(self._model).where(self._model.slug == slug)
         category = query.scalar()
         if not category:
-            raise CategoryNotFoundBySlug
+            raise CategoryNotFoundByName
         return category
 
     def get_by_id(self, session: Session, category_id: int) -> Optional[Category]:
@@ -55,7 +55,6 @@ class CategoryRepository:
             category.description = description
         if is_published is not None:
             category.is_published = is_published
-
         return category
 
     def delete_category(self, session: Session, category: Category) -> None:

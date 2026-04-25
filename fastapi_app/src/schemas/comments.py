@@ -21,18 +21,9 @@ def valid_text(text: str):
     return text
 
 
-def valid_username(username: str):
-    if username is None:
-        return username
-    if len(username) < 3 or len(username) > 20:
-        raise ValueError(
-            'Имя пользователя должно быть длиннее 2 символов и короче 21 символа.'
-        )
-    return username.lower()
-
-
 class CommentBase(BaseModel):
     text: str = Field(...)
+    image: str
 
     @field_validator("text", mode="after")
     @staticmethod
@@ -41,11 +32,12 @@ class CommentBase(BaseModel):
 
 
 class CommentRequest(CommentBase):
-    post_id: int = Field(...)
+    pass
 
 
 class CommentUpdate(BaseModel):
     text: str = Field(default=None)
+    image: str
 
     @field_validator("text", mode="after")
     @staticmethod
@@ -56,13 +48,13 @@ class CommentUpdate(BaseModel):
 class CommentResponse(BaseModel):
     id: int
     text: str
-    author_username: str
+    image: str
+    author_id: int
     created_at: datetime
     post_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
-    @field_validator("author_username", mode="after")
-    @staticmethod
-    def check_username(author_username: str):
-        return valid_username(author_username)
+
+class CommentImageResponse(BaseModel):
+    image: str

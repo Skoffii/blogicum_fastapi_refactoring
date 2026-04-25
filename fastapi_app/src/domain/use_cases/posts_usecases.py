@@ -1,13 +1,17 @@
 from typing import List, Optional
-from fastapi import status, HTTPException
 from datetime import datetime
+from fastapi.responses import FileResponse
+from fastapi import UploadFile
+from uuid import uuid4
+import shutil
+import os
 
 from infrastructure.database import database
 from infrastructure.repos.post_rep import PostRepository
 from infrastructure.repos.user_rep import UserRepository
 from infrastructure.repos.category_rep import CategoryRepository
 from infrastructure.models.categories_model import Category
-from schemas.posts import PostRequest, PostResponse, PostUpdate
+from schemas.posts import PostRequest, PostResponse, PostUpdate, PostImageResponse
 from schemas.users import UserResponse
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
@@ -113,9 +117,9 @@ class CreatePostUseCase:
             except UserNotFoundById:
                 raise UserNotFoundByIdException(user_id=author_id)
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=data.category_name)
+                raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
             except CategoryNotPublished:
-                raise CategoryNotPublishedException(category_slug=data.category_name)
+                raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
 
         return PostResponse.model_validate(obj=post)
 
@@ -143,7 +147,7 @@ class UpdatePostUseCase:
             except LocationNotFoundByName:
                 raise LocationNotFoundByNameException(location_name=data.location_name)
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=data.category_name)
+                raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
 
         return PostResponse.model_validate(obj=post)
 
@@ -165,3 +169,52 @@ class DeletePostUseCase:
             except PostDoesNotExist:
                 raise PostNotFoundByIdException(post_id=post_id)
             self._repo.delete_post(session=session, post=post)
+
+
+class GetPostImageUseCase:
+    def __init__(self) -> None:
+        self._database = database
+        self._repo = PostRepository()
+        self.image_folder = "./../images"
+
+    async def execute(self, post_id: int) -> FileResponse:
+        try:
+            with self._database.session() as session:
+                post = self._repo.get_by_id(session=session, post_id=post_id)
+        except PostNotFoundById:
+            raise PostNotFoundByIdException(id=post_id)
+
+        if not post.image:
+            raise PostHasNoImageException()
+
+        full_image_path: str = f"{self.image_folder}/{post.image}"
+        return FileResponse(full_image_path, media_type="image/jpeg")
+
+
+class AddPostImageUseCase:
+    def __init__(self) -> None:
+        self._database = database
+        self._repo = PostRepository()
+        self.image_folder = "./../images"
+
+    async def execute(self, image: UploadFile, post_id: int) -> PostImageResponse:
+        os.makedirs(self.image_folder, exist_ok=True)
+        if not image.filename or image.filename.split(".")[-1].lower() not in ["jpeg", "jpg", "png"]:
+            raise UploadFileIsNotImageException()
+        file_extension = image.filename.split(".")[-1]
+        new_image_name: str = f"{uuid4().hex}.{file_extension}"
+        new_image_path: str = f"{self.image_folder}/{new_image_name}"
+        with open(new_image_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+        with self._database.session() as session:
+            try:
+                post = self._repo.get_by_id(session=session, post_id=post_id)
+            except PostNotFoundById:
+                raise PostNotFoundByIdException(post_id=post_id)
+            self._repo.update_post_image(
+                session=session,
+                post_id=post.post_id,
+                image_filename=new_image_name
+            )
+
+        return PostImageResponse(image=new_image_name)

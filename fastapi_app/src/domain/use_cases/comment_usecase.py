@@ -1,9 +1,15 @@
+from fastapi.responses import FileResponse
+from typing import List
+from uuid import uuid4
+import shutil
+import os
+from fastapi import UploadFile
+
+
 from infrastructure.database import database
 from infrastructure.repos.comment_rep import CommentRepository
 from infrastructure.repos.post_rep import PostRepository
-from schemas.comments import CommentRequest, CommentResponse, CommentUpdate
-from fastapi import HTTPException, status
-from typing import List
+from schemas.comments import CommentRequest, CommentResponse, CommentUpdate, CommentImageResponse
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
 
@@ -55,10 +61,9 @@ class CreateCommentUseCase:
                 comment = self._repo.create_comment(
                     session=session, 
                     data=data, 
-                    author_id=author_id, 
-                    post_id=post_id
+                    author_id=author_id,
+                    post_id=post_id,
                 )
-
                 session.commit()
             except PostNotFoundById:
                 raise PostNotFoundByIdException(post_id=post_id)
@@ -86,11 +91,10 @@ class UpdateCommentUseCase:
                     comment=comment, 
                     data=data
                 )
-            except CommentNotFoundById:
+            except CommentNotFound:
                 raise CommentNotFoundByIdException(comment_id=comment_id)
-            except UserPermisionException:
-                raise 
-
+            except UserPermissionDenied:
+                raise UserPermisionException (current_user_id=current_user_id)
         return CommentResponse.model_validate(obj=updated_comment)
 
 
@@ -112,3 +116,47 @@ class DeleteCommentUseCase:
             except UserPermissionDenied:
                 raise UserPermisionException(current_user_id=current_user_id)
             self._repo.delete_comment(session=session, comment=comment)
+
+class GetCommentImageUseCase:
+    def __init__(self) -> None:
+        self._database = database
+        self._repo = CommentRepository()
+        self.image_folder = "./../images"
+    async def execute(self, comment_id: int) -> FileResponse:
+        try:
+            with self._database.session() as session:
+                comment = self._repo.get_comment(session=session, comment_id=comment_id)
+        except CommentNotFound:
+            raise CommentNotFoundByIdException(comment_id=comment_id)
+
+        if not comment.image:
+            raise CommentHasNoImageException()
+        full_image_path: str = f"{self.image_folder}/{comment.image}.jpeg"
+        return FileResponse(full_image_path, media_type="image/jpeg")
+
+
+class AddCommentImageUseCase:
+    def __init__(self) -> None:
+        self._database = database
+        self._repo = CommentRepository()
+        self.image_folder = "./../images"
+
+    async def execute(self, comment_id: int, image: UploadFile) -> CommentImageResponse:
+        os.makedirs(self.image_folder, exist_ok=True)
+        if not image.filename or image.filename.split(".")[-1].lower() not in ["jpeg"]:
+            raise UploadFileIsNotImageException()
+        new_image_name: str = f"{uuid4().hex}"
+        new_image_path: str = f"{self.image_folder}/{new_image_name}.jpeg"
+        with open(new_image_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+        with self._database.session() as session:
+            try:
+                comment = self._repo.get_comment(session=session, comment_id=comment_id)
+            except CommentNotFound:
+                raise CommentNotFoundByIdException(comment_id=comment_id)
+            self._repo.update_comment_image(
+                session=session,
+                comment_id=comment_id,
+                image_filename=new_image_name
+            )
+        return CommentImageResponse(image=new_image_name)

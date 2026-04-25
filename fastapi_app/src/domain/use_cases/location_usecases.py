@@ -1,6 +1,6 @@
 from infrastructure.database import database
 from infrastructure.repos.location_rep import LocationRepository
-from schemas.location import LocationResponse
+from schemas.location import LocationResponse, LocationUpdate, LocationRequest
 
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
@@ -16,7 +16,7 @@ class GetLocationByIdUseCase:
             try:
                 location = self._repo.get_by_id(session=session, location_id=location_id)
             except LocationNotFoundById:
-                raise LocationNotFoundByIdException
+                raise LocationNotFoundByIdException(location_id=location_id)
         return LocationResponse.model_validate(obj=location)
     
 
@@ -37,13 +37,15 @@ class CreateLocationUseCase:
         self._database = database
         self._repo = LocationRepository()
 
-    async def execute(self, name: str, is_published: bool = True) -> LocationResponse:
+    async def execute(self, data: LocationRequest) -> LocationResponse:
         with self._database.session() as session:
             try:
-                location = self._repo.create_location(session=session, name=name, is_published=is_published)
+                location = self._repo.create_location(
+                    session=session,
+                    data=data)
                 session.commit()
             except LocationAlreadyExist:
-                raise LocationAlreadyExistException(name=name)
+                raise LocationAlreadyExistException(location_name=data.name)
         return LocationResponse.model_validate(location)
 
 
@@ -53,21 +55,23 @@ class UpdateLocationUseCase:
         self._repo = LocationRepository()
 
     async def execute(
-        self, 
-        location_id: int, 
-        location_name: str, 
-        is_published: Optional[bool] = None
-    ) -> LocationResponse:
+        self,
+        location_id: int,
+        data: LocationUpdate,
+    ) -> LocationUpdate:
         with self._database.session() as session:
             try:
                 location = self._repo.get_by_id(session=session, location_id=location_id)
                 updated_location = self._repo.update_location(
-                    session=session, location=location, name=location_name, is_published=is_published
+                    session=session,
+                    location=location,
+                    name=data.name,
+                    is_published=data.is_published
                 )
             except LocationNotFoundById:
-                raise LocationNotFoundByIdException(location_id=location_id)
+                raise LocationNotFoundByIdException(location_id=location.location_id)
             except LocationAlreadyExist:
-                raise LocationAlreadyExistException(location_name=location_name)
+                raise LocationAlreadyExistException(location_name=updated_location.location_name)
         return LocationResponse.model_validate(updated_location)
 
 

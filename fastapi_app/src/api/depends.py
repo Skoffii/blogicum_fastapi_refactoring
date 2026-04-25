@@ -6,6 +6,8 @@ from domain.use_cases.posts_usecases import (
     CreatePostUseCase,
     UpdatePostUseCase,
     DeletePostUseCase,
+    GetPostImageUseCase,
+    AddPostImageUseCase,
 )
 
 from domain.use_cases.comment_usecase import (
@@ -14,15 +16,25 @@ from domain.use_cases.comment_usecase import (
     CreateCommentUseCase,
     UpdateCommentUseCase,
     DeleteCommentUseCase,
+    GetCommentImageUseCase,
+    AddCommentImageUseCase,
 )
 
 from domain.use_cases.category_usecases import (
+    GetAllCategoriesUseCase,
     GetCategoryByIdUseCase,
     GetCategoryBySlugUseCase,
+    CreateCategoryUseCase,
+    UpdateCategoryUseCase,
+    DeleteCategoryUseCase,
 )
 
 from domain.use_cases.location_usecases import (
-    GetLocationByIdUseCase
+    GetLocationByIdUseCase,
+    GetAllLocationsUseCase,
+    CreateLocationUseCase,
+    UpdateLocationUseCase,
+    DeleteLocationUseCase,
 )
 
 from domain.use_cases.user_usecase import (
@@ -34,6 +46,7 @@ from domain.use_cases.user_usecase import (
 )
 
 
+# Posts
 async def get_posts_use_case() -> GetPostUseCase:
     return GetPostUseCase()
 
@@ -62,6 +75,15 @@ async def delete_post_use_case() -> DeletePostUseCase:
     return DeletePostUseCase()
 
 
+async def get_post_image_use_case() -> GetPostImageUseCase:
+    return GetPostImageUseCase()
+
+
+async def add_post_image_use_case() -> AddPostImageUseCase:
+    return AddPostImageUseCase()
+
+
+# Comments
 async def get_comments_by_post_use_case() -> GetCommentsByPostUseCase:
     return GetCommentsByPostUseCase()
 
@@ -82,6 +104,15 @@ async def delete_comment_use_case() -> DeleteCommentUseCase:
     return DeleteCommentUseCase()
 
 
+async def get_comment_image_use_case() -> GetCommentImageUseCase:
+    return GetCommentImageUseCase()
+
+
+async def add_comment_image_use_case() -> AddCommentImageUseCase:
+    return AddCommentImageUseCase()
+
+
+# Categories
 async def get_category_by_id_use_case() -> GetCategoryByIdUseCase:
     return GetCategoryByIdUseCase()
 
@@ -90,9 +121,44 @@ async def get_category_by_slug_use_case() -> GetCategoryBySlugUseCase:
     return GetCategoryBySlugUseCase()
 
 
+async def get_all_categories_use_case() -> GetAllCategoriesUseCase:
+    return GetAllCategoriesUseCase()
+
+
+async def create_category_use_case() -> CreateCategoryUseCase:
+    return CreateCategoryUseCase()
+
+
+async def update_category_use_case() -> UpdateCategoryUseCase:
+    return UpdateCategoryUseCase()
+
+
+async def delete_category_use_case() -> DeleteCategoryUseCase:
+    return DeleteCategoryUseCase()
+
+
+# Locations
 async def get_location_by_id() -> GetLocationByIdUseCase:
     return GetLocationByIdUseCase()
 
+
+async def get_all_locations_use_case() -> GetAllLocationsUseCase:
+    return GetAllLocationsUseCase()
+
+
+async def create_location_use_case() -> CreateLocationUseCase:
+    return CreateLocationUseCase()
+
+
+async def update_location_use_case() -> UpdateLocationUseCase:
+    return UpdateLocationUseCase()
+
+
+async def delete_location_use_case() -> DeleteLocationUseCase:
+    return DeleteLocationUseCase()
+
+
+# Users
 async def get_user_by_id_use_case() -> GetUserByIdUseCase:
     return GetUserByIdUseCase()
 

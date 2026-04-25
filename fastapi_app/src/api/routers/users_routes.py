@@ -22,14 +22,20 @@ from core.exceptions.domain_exceptions import (
     UserEmailIsNotUniqueException,
     UserPermisionException,
 )
+from schemas.error import ErrorResponse, ValidationErrorResponse
 
 router = APIRouter()
 
 
 @router.get(
     "/users/{user_id}",
-    status_code=status.HTTP_200_OK,
     response_model=UserResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_user_by_id(
     user_id: int,
@@ -40,14 +46,19 @@ async def get_user_by_id(
     except UserNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
 
 
 @router.get(
     "/users/{login}",
-    status_code=status.HTTP_200_OK,
     response_model=UserResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_user_by_login(
     login: str,
@@ -58,14 +69,21 @@ async def get_user_by_login(
     except UserNotFoundByUsernameException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
 
 
 @router.post(
     "/users/create",
-    status_code=status.HTTP_201_CREATED,
     response_model=UserResponse,
+    responses={
+        201: {"model": UserResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def create_user(
     user: UserRequest,
@@ -76,19 +94,25 @@ async def create_user(
     except UserAlreadyExistExeption as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
     except UserEmailIsNotUniqueException as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
 
 
 @router.put(
     "/user/{user_id}/edit",
-    status_code=status.HTTP_200_OK,
     response_model=UserResponse,
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def update_user(
     user_id: int,
@@ -100,18 +124,25 @@ async def update_user(
     except UserNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
     except UserEmailIsNotUniqueException as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
 
 
 @router.delete(
     "/user/{user_id}/delete",
-    status_code=status.HTTP_204_NO_CONTENT,
+    responses = {
+        204: {"detail": "NO_CONTENT"},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def delete_user(
     user_id: int,
@@ -123,10 +154,10 @@ async def delete_user(
     except UserNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )

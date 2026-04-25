@@ -1,8 +1,8 @@
-"""Initial migration
+"""Initial
 
-Revision ID: 66f47c645e66
+Revision ID: 797d9de037d8
 Revises: 
-Create Date: 2026-04-17 10:31:26.203894
+Create Date: 2026-04-25 17:46:02.559786
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '66f47c645e66'
+revision: str = '797d9de037d8'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -61,9 +61,9 @@ def upgrade() -> None:
     sa.Column('image', sa.String(), nullable=True),
     sa.Column('author_id', sa.Integer(), nullable=False),
     sa.Column('location_id', sa.Integer(), nullable=True),
-    sa.Column('category_id', sa.Integer(), nullable=True),
+    sa.Column('category_slug', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['author_id'], ['auth_user.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['category_id'], ['blog_category.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['category_slug'], ['blog_category.slug'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['location_id'], ['blog_location.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -73,6 +73,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('post_id', sa.Integer(), nullable=False),
     sa.Column('author_id', sa.String(), nullable=False),
+    sa.Column('image', sa.String(), nullable=True),
     sa.ForeignKeyConstraint(['author_id'], ['auth_user.id'], ),
     sa.ForeignKeyConstraint(['post_id'], ['blog_post.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')

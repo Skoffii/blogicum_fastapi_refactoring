@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, HTTPException, Depends, UploadFile, File
 from typing import List
 
-from schemas.posts import PostRequest, PostUpdate, PostResponse
+from schemas.posts import PostRequest, PostUpdate, PostResponse, PostImageResponse
+from schemas.error import *
 from domain.use_cases.posts_usecases import (
     GetPostUseCase,
     GetPostByIdUseCase,
@@ -10,6 +11,8 @@ from domain.use_cases.posts_usecases import (
     CreatePostUseCase,
     UpdatePostUseCase,
     DeletePostUseCase,
+    GetPostImageUseCase,
+    AddPostImageUseCase
 )
 from api.depends import (
     get_posts_use_case,
@@ -19,20 +22,30 @@ from api.depends import (
     create_post_use_case,
     update_post_use_case,
     delete_post_use_case,
+    get_post_image_use_case,
+    add_post_image_use_case
 )
 from core.exceptions.domain_exceptions import (
     PostNotFoundByIdException,
     UserPermisionException,
+    UserNotFoundByIdException,
     CategoryNotFoundBySlugException,
+    PostHasNoImageException,
 )
 
-router = APIRouter(prefix="/api/v1")
+router = APIRouter()
 
 
 @router.get(
-    "/posts",
-    status_code=status.HTTP_200_OK,
+    "/posts/",
     response_model=List[PostResponse],
+    responses={
+        200: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_posts(
     skip: int = 0,
@@ -50,8 +63,15 @@ async def get_posts(
 
 @router.get(
     "/posts/{post_id}",
-    status_code=status.HTTP_200_OK,
     response_model=PostResponse,
+    responses={
+        200: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_post_by_id(
     post_id: int,
@@ -63,18 +83,30 @@ async def get_post_by_id(
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
 @router.get(
     "/authors/{login}/posts",
-    status_code=status.HTTP_200_OK,
+    response_model=PostResponse,
+    responses={
+        200: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_posts_by_author(
     login: str,
@@ -93,8 +125,14 @@ async def get_posts_by_author(
 
 @router.get(
     "/categories/{category_slug}/posts",
-    status_code=status.HTTP_200_OK,
     response_model=List[PostResponse],
+    responses={
+        200: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def get_posts_by_category(
     category_slug: str,
@@ -107,14 +145,53 @@ async def get_posts_by_category(
     except CategoryNotFoundBySlugException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
+@router.get(
+    "/posts/{post_id}/images",
+    response_model=PostImageResponse,
+    responses={
+        200: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
+async def get_post_image(
+    post_id: int,
+    use_case: GetPostImageUseCase = Depends(get_post_image_use_case),
+) -> PostImageResponse:
+    try:
+        return await use_case.execute(post_id=post_id)
+    except PostHasNoImageException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
 @router.post(
     "/posts/create",
-    status_code=status.HTTP_201_CREATED,
     response_model=PostResponse,
+    responses={
+        201: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def create_post(
     post: PostRequest,
@@ -123,22 +200,59 @@ async def create_post(
 ) -> PostResponse:
     try:
         return await use_case.execute(data=post, author_id=author_id)
+    except CategoryNotFoundBySlugException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except UserNotFoundByIdException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+
+async def add_post_image(
+    post_id: int,
+    image: UploadFile = File(...),
+    use_case: AddPostImageUseCase = Depends(add_post_image_use_case),
+) -> PostImageResponse:
+    try:
+        return await use_case.execute(image=image, post_id=post_id)
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail,
         )
-    except UserPermisionException as exc:
+    except PostHasNoImageException as exc:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
         )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
 
 
 @router.put(
     "/posts/{post_id}/edit",
-    status_code=status.HTTP_200_OK,
     response_model=PostResponse,
+    responses={
+        201: {"model": PostResponse},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def update_post(
     post_id: int,
@@ -155,18 +269,35 @@ async def update_post(
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.get_detail(),
+        )
+    except CategoryNotFoundBySlugException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
         )
 
 
 @router.delete(
     "/posts/{post_id}/delete",
-    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        204: {"detail": "NO_CONTENT"},
+        401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
 )
 async def delete_post(
     post_id: int,
@@ -174,14 +305,14 @@ async def delete_post(
     use_case: DeletePostUseCase = Depends(delete_post_use_case),
 ) -> None:
     try:
-        await use_case.execute(post_id=post_id, current_user_id=current_user_id)
+        return await use_case.execute(post_id=post_id, current_user_id=current_user_id)
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )
     except UserPermisionException as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=exc.detail,
+            detail=exc.get_detail(),
         )

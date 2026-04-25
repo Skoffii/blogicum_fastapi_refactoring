@@ -74,6 +74,7 @@ class CreateUserUseCase:
             last_login=None,
             date_joined=datetime.now(),
         )
+        session.commit()
         return UserResponse.model_validate(obj=user)
 
 

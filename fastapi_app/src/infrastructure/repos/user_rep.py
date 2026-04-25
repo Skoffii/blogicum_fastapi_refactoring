@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Type, Optional
+from pydantic import SecretStr, EmailStr
 from infrastructure.models.users_model import User
 from schemas.users import UserUpdate
 from datetime import datetime
@@ -30,10 +31,10 @@ class UserRepository:
         self,
         session: Session,
         username: str,
-        password: str,
+        password: SecretStr,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
-        email: Optional[str] = None,
+        email: Optional[EmailStr] = None,
         is_staff: bool = False,
         is_superuser: bool = False,
         is_active: bool = True,
