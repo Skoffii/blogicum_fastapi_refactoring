@@ -74,7 +74,8 @@ class CreateCommentUseCase:
                 raise PostNotFoundByIdException(post_id=post_id)
             except UserNotFoundById:
                 raise UserNotFoundByIdException(user_id=str(author_id))
-
+            session.commit()
+            session.refresh(comment)
         return CommentResponse.model_validate(obj=comment)
 
 
@@ -98,6 +99,8 @@ class UpdateCommentUseCase:
                 raise CommentNotFoundByIdException(comment_id=comment_id)
             except UserPermissionDenied:
                 raise UserPermisionException(current_user_id=current_user_id)
+            session.commit()
+            session.refresh(comment)
         return CommentResponse.model_validate(obj=updated_comment)
 
 
@@ -118,6 +121,7 @@ class DeleteCommentUseCase:
                 raise CommentNotFoundByIdException(comment_id=comment_id)
             except UserPermissionDenied:
                 raise UserPermisionException(current_user_id=current_user_id)
+            session.commit()
             self._repo.delete_comment(session=session, comment=comment)
 
 
@@ -146,7 +150,9 @@ class AddCommentImageUseCase:
         self._repo = CommentRepository()
         self.image_folder = "./../images"
 
-    async def execute(self, comment_id: int, image: UploadFile) -> CommentImageResponse:
+    async def execute(
+        self, comment_id: int, current_user_id: int, image: UploadFile
+    ) -> CommentImageResponse:
         os.makedirs(self.image_folder, exist_ok=True)
         if not image.filename or image.filename.split(".")[-1].lower() not in ["jpeg"]:
             raise UploadFileIsNotImageException()
@@ -157,9 +163,13 @@ class AddCommentImageUseCase:
         with self._database.session() as session:
             try:
                 comment = self._repo.get_comment(session=session, comment_id=comment_id)
+                if comment.author_id != current_user_id:
+                    raise UserPermisionException(current_user_id=current_user_id)
             except CommentNotFound:
                 raise CommentNotFoundByIdException(comment_id=comment_id)
             self._repo.update_comment_image(
                 session=session, comment_id=comment_id, image_filename=new_image_name
             )
+            session.commit()
+            session.refresh(comment)
         return CommentImageResponse(image=new_image_name)

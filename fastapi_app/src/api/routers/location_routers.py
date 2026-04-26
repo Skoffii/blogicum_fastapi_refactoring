@@ -16,11 +16,13 @@ from api.depends import (
     create_location_use_case,
     update_location_use_case,
     delete_location_use_case,
+    get_current_user,
 )
 from core.exceptions.domain_exceptions import (
     LocationAlreadyExistException,
     LocationNotFoundByIdException,
 )
+from schemas.auth import UserData
 
 router = APIRouter()
 
@@ -88,6 +90,7 @@ async def get_all_locations(
 )
 async def create_location(
     data: LocationRequest,
+    current_user: UserData = Depends(get_current_user),
     use_case: CreateLocationUseCase = Depends(create_location_use_case),
 ) -> LocationResponse:
     try:
@@ -119,6 +122,7 @@ async def create_location(
 async def update_location(
     location_id: int,
     data: LocationUpdate,
+    current_user: UserData = Depends(get_current_user),
     use_case: UpdateLocationUseCase = Depends(update_location_use_case),
 ) -> LocationResponse:
     try:
@@ -153,6 +157,7 @@ async def update_location(
 )
 async def delete_location(
     location_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: DeleteLocationUseCase = Depends(delete_location_use_case),
 ) -> None:
     try:

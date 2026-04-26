@@ -86,3 +86,7 @@ class CommentNotFound(BaseInfrastructureException):
 
 class DatabaseIntegrityError(BaseInfrastructureException):
     pass
+
+
+class CredentialsException(BaseInfrastructureException):
+    pass

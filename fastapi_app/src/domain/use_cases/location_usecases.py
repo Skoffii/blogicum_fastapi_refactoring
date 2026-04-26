@@ -45,6 +45,8 @@ class CreateLocationUseCase:
                 session.commit()
             except LocationAlreadyExist:
                 raise LocationAlreadyExistException(location_name=data.name)
+            session.commit()
+            session.refresh(location)
         return LocationResponse.model_validate(location)
 
 
@@ -75,6 +77,8 @@ class UpdateLocationUseCase:
                 raise LocationAlreadyExistException(
                     location_name=updated_location.location_name
                 )
+            session.commit()
+            session.refresh(location)
         return LocationResponse.model_validate(updated_location)
 
 
@@ -92,3 +96,4 @@ class DeleteLocationUseCase:
                 self._repo.delete_location(session=session, location=location)
             except LocationNotFoundById:
                 raise LocationNotFoundByIdException(location_id=location_id)
+            session.commit()

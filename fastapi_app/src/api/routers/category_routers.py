@@ -19,12 +19,14 @@ from api.depends import (
     create_category_use_case,
     update_category_use_case,
     delete_category_use_case,
+    get_current_user,
 )
 from core.exceptions.domain_exceptions import (
     CategoryNotFoundBySlugException,
     CategoryNotFoundByIdException,
     CategoryAlreadyExistException,
 )
+from schemas.auth import UserData
 
 router = APIRouter()
 
@@ -125,6 +127,7 @@ async def get_category_by_id(
 )
 async def create_category(
     category: CategoryRequest,
+    current_user: UserData = Depends(get_current_user),
     use_case: CreateCategoryUseCase = Depends(create_category_use_case),
 ) -> CategoryResponse:
     try:
@@ -156,6 +159,7 @@ async def create_category(
 async def update_category(
     slug: str,
     category: CategoryUpdate,
+    current_user: UserData = Depends(get_current_user),
     use_case: UpdateCategoryUseCase = Depends(update_category_use_case),
 ) -> CategoryResponse:
     try:
@@ -193,6 +197,7 @@ async def update_category(
 )
 async def delete_category(
     category_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: DeleteCategoryUseCase = Depends(delete_category_use_case),
 ) -> None:
     try:

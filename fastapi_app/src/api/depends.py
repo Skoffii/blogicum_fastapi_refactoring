@@ -45,6 +45,35 @@ from domain.use_cases.user_usecase import (
     DeleteUserUseCase,
 )
 
+from domain.use_cases.auth_usecases import (
+    AuthenticateUserUseCase,
+    CreateAccessTokenUseCase,
+)
+from fastapi.security import OAuth2PasswordBearer
+
+from fastapi import Depends, HTTPException
+from jose import JWTError, jwt
+from schemas.auth import UserData, Token
+from core.config import settings
+
+scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+async def get_current_user(token: str = Depends(scheme)) -> Token:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_AUTH_KEY.get_secret_value(),
+            algorithms=[settings.AUTH_ALGORITHM],
+        )
+        username: str = payload.get("sub")
+        user_id: int = payload.get("user_id")
+        if username is None or user_id is None:
+            raise HTTPException(status_code=401, detail="Неверный токен")
+        return UserData(username=username, user_id=user_id)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Неверный токен")
+
 
 # Posts
 async def get_posts_use_case() -> GetPostUseCase:
@@ -177,3 +206,11 @@ async def update_user_use_case() -> UpdateUserUseCase:
 
 async def delete_user_use_case() -> DeleteUserUseCase:
     return DeleteUserUseCase()
+
+
+def create_access_token_use_case() -> CreateAccessTokenUseCase:
+    return CreateAccessTokenUseCase()
+
+
+def authenticate_user_use_case() -> AuthenticateUserUseCase:
+    return AuthenticateUserUseCase()

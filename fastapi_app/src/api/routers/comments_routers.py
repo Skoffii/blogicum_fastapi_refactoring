@@ -26,6 +26,7 @@ from api.depends import (
     delete_comment_use_case,
     get_comment_image_use_case,
     add_comment_image_use_case,
+    get_current_user,
 )
 from core.exceptions.domain_exceptions import (
     CommentNotFoundByIdException,
@@ -33,6 +34,7 @@ from core.exceptions.domain_exceptions import (
     PostNotFoundByIdException,
     CommentHasNoImageException,
 )
+from schemas.auth import UserData
 
 router = APIRouter()
 
@@ -171,6 +173,7 @@ async def create_comment(
     responses={
         201: {"model": CommentImageResponse},
         401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         422: {"model": ValidationErrorResponse},
         500: {"model": ErrorResponse},
@@ -180,10 +183,13 @@ async def add_comment_image(
     comment_id: int,
     post_id: int,
     image: UploadFile = File(...),
+    current_user: UserData = Depends(get_current_user),
     use_case: AddCommentImageUseCase = Depends(add_comment_image_use_case),
 ) -> CommentImageResponse:
     try:
-        return await use_case.execute(image=image, comment_id=comment_id)
+        return await use_case.execute(
+            image=image, comment_id=comment_id, current_user_id=current_user.id
+        )
     except CommentNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -192,6 +198,11 @@ async def add_comment_image(
     except CommentHasNoImageException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.get_detail(),
+        )
+    except UserPermisionException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=exc.get_detail(),
         )
     except Exception as exc:
@@ -216,7 +227,7 @@ async def update_comment(
     comment_id: int,
     post_id: int,
     comment: CommentUpdate,
-    current_user_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: UpdateCommentUseCase = Depends(update_comment_use_case),
 ) -> CommentResponse:
     try:
@@ -224,7 +235,7 @@ async def update_comment(
             comment_id=comment_id,
             post_id=post_id,
             data=comment,
-            current_user_id=current_user_id,
+            current_user_id=current_user.id,
         )
     except CommentNotFoundByIdException as exc:
         raise HTTPException(
@@ -255,13 +266,13 @@ async def update_comment(
 )
 async def delete_comment(
     comment_id: int,
-    current_user_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: DeleteCommentUseCase = Depends(delete_comment_use_case),
 ) -> None:
     try:
         await use_case.execute(
             comment_id=comment_id,
-            current_user_id=current_user_id,
+            current_user_id=current_user.id,
         )
     except CommentNotFoundByIdException as exc:
         raise HTTPException(

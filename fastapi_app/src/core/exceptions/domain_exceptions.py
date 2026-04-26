@@ -178,7 +178,24 @@ class CommentHasNoImageException(BaseDomainException):
 
 
 class UploadFileIsNotImageException(BaseDomainException):
-    _exception_text = "Загруженный файл не является JPEG изображением"
+    _exception_text_template = "Загруженный файл не является JPEG изображением"
+
+    def __init__(self) -> None:
+        super().__init__(detail=self._exception_text_template)
+
+
+class InvalidUsernameException(BaseDomainException):
+    _exception_text = "пользователь с именем {username} не найден"
+
+    def __init__(self, username: str) -> None:
+        self._exception_text_template = self._exception_text_template.format(
+            username=username
+        )
+        super().__init__(detail=self._exception_text_template)
+
+
+class WrongPasswordException(BaseDomainException):
+    _exception_text = "Пароль неверен"
 
     def __init__(self) -> None:
         super().__init__(detail=self._exception_text)

@@ -119,7 +119,8 @@ class CreatePostUseCase:
                 raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
             except CategoryNotPublished:
                 raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
-
+            session.commit()
+            session.refresh(post)
         return PostResponse.model_validate(obj=post)
 
 
@@ -147,7 +148,8 @@ class UpdatePostUseCase:
                 raise LocationNotFoundByNameException(location_name=data.location_name)
             except CategoryNotFoundByName:
                 raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
-
+            session.commit()
+            session.refresh(post)
         return PostResponse.model_validate(obj=post)
 
 
@@ -167,6 +169,7 @@ class DeletePostUseCase:
                 raise UserPermissionDenied(current_user_id=current_user_id)
             except PostDoesNotExist:
                 raise PostNotFoundByIdException(post_id=post_id)
+            session.commit()
             self._repo.delete_post(session=session, post=post)
 
 
@@ -196,7 +199,9 @@ class AddPostImageUseCase:
         self._repo = PostRepository()
         self.image_folder = "./../images"
 
-    async def execute(self, image: UploadFile, post_id: int) -> PostImageResponse:
+    async def execute(
+        self, image: UploadFile, post_id: int, curent_user_id: int
+    ) -> PostImageResponse:
         os.makedirs(self.image_folder, exist_ok=True)
         if not image.filename or image.filename.split(".")[-1].lower() not in [
             "jpeg",
@@ -212,10 +217,13 @@ class AddPostImageUseCase:
         with self._database.session() as session:
             try:
                 post = self._repo.get_by_id(session=session, post_id=post_id)
+                if post.author_id != curent_user_id:
+                    raise UserPermisionException(current_user_id=curent_user_id)
             except PostNotFoundById:
                 raise PostNotFoundByIdException(post_id=post_id)
             self._repo.update_post_image(
                 session=session, post_id=post.post_id, image_filename=new_image_name
             )
-
+            session.commit()
+            session.refresh(post)
         return PostImageResponse(image=new_image_name)

@@ -4,6 +4,7 @@ from pydantic import SecretStr, EmailStr
 from infrastructure.models.users_model import User
 from schemas.users import UserUpdate
 from datetime import datetime
+from resourses.auth import get_password_hash
 from core.exceptions.infrastructure_exceptions import (
     UserNotFoundById,
     UserNotFoundByUsername,
@@ -35,7 +36,7 @@ class UserRepository:
         self,
         session: Session,
         username: str,
-        password: SecretStr,
+        password: str,
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
         email: Optional[EmailStr] = None,
@@ -51,6 +52,7 @@ class UserRepository:
                 raise UserAlreadyExist
         except UserNotFoundByUsername:
             pass
+        hashed_password = get_password_hash(password)
         if email:
             exist_email = (
                 session.query(self._model).where(self._model.email == email).scalar()
@@ -59,7 +61,7 @@ class UserRepository:
                 raise UserEmailAlreadyExist
         new_user = self._model(
             username=username,
-            password=password,
+            password=hashed_password,
             first_name=first_name,
             last_name=last_name,
             email=email,

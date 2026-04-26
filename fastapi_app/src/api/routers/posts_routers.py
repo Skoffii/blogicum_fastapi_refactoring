@@ -24,6 +24,7 @@ from api.depends import (
     delete_post_use_case,
     get_post_image_use_case,
     add_post_image_use_case,
+    get_current_user,
 )
 from core.exceptions.domain_exceptions import (
     PostNotFoundByIdException,
@@ -32,6 +33,7 @@ from core.exceptions.domain_exceptions import (
     CategoryNotFoundBySlugException,
     PostHasNoImageException,
 )
+from schemas.auth import UserData
 
 router = APIRouter()
 
@@ -198,11 +200,11 @@ async def get_post_image(
 )
 async def create_post(
     post: PostRequest,
-    author_id: int,
+    author: UserData = Depends(get_current_user),
     use_case: CreatePostUseCase = Depends(create_post_use_case),
 ) -> PostResponse:
     try:
-        return await use_case.execute(data=post, author_id=author_id)
+        return await use_case.execute(data=post, author_id=author.id)
     except CategoryNotFoundBySlugException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -223,19 +225,26 @@ async def create_post(
 async def add_post_image(
     post_id: int,
     image: UploadFile = File(...),
+    current_user: UserData = Depends(get_current_user),
     use_case: AddPostImageUseCase = Depends(add_post_image_use_case),
 ) -> PostImageResponse:
     try:
-        return await use_case.execute(image=image, post_id=post_id)
+        return await use_case.execute(
+            image=image, post_id=post_id, current_user_id=current_user.id
+        )
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=exc.get_detail,
+            detail=exc.get_detail(),
         )
     except PostHasNoImageException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=exc.get_detail(),
+        )
+    except UserPermisionException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=exc.get_detail()
         )
     except Exception as exc:
         raise HTTPException(
@@ -259,14 +268,14 @@ async def add_post_image(
 async def update_post(
     post_id: int,
     post: PostUpdate,
-    current_user_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: UpdatePostUseCase = Depends(update_post_use_case),
 ) -> PostResponse:
     try:
         return await use_case.execute(
             post_id=post_id,
             data=post,
-            current_user_id=current_user_id,
+            current_user_id=current_user.id,
         )
     except PostNotFoundByIdException as exc:
         raise HTTPException(
@@ -303,11 +312,11 @@ async def update_post(
 )
 async def delete_post(
     post_id: int,
-    current_user_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: DeletePostUseCase = Depends(delete_post_use_case),
 ) -> None:
     try:
-        return await use_case.execute(post_id=post_id, current_user_id=current_user_id)
+        return await use_case.execute(post_id=post_id, current_user_id=current_user.id)
     except PostNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -3,11 +3,7 @@ from infrastructure.repos.user_rep import UserRepository
 from schemas.users import UserResponse, UserUpdate, UserRequest
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
-
-from passlib.context import CryptContext
 from datetime import datetime
-
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class GetUserByIdUseCase:
@@ -62,11 +58,11 @@ class CreateUserUseCase:
                 if existing_email:
                     raise UserEmailIsNotUniqueException(user_email=data.email)
 
-        hash_pwd = pwd.hash(data.password.get_secret_value())
+        pwd = data.password.get_secret_value()
         user = self._repo.create_user(
             session=session,
             username=data.username,
-            password=hash_pwd,
+            password=pwd,
             first_name=data.first_name,
             last_name=data.last_name,
             email=data.email,
@@ -77,6 +73,7 @@ class CreateUserUseCase:
             date_joined=datetime.now(),
         )
         session.commit()
+        session.refresh(user)
         return UserResponse.model_validate(obj=user)
 
 
@@ -85,10 +82,14 @@ class UpdateUserUseCase:
         self._database = database
         self._repo = UserRepository()
 
-    async def execute(self, user_id: int, data: UserUpdate) -> UserResponse:
+    async def execute(
+        self, user_id: int, current_user_id: int, data: UserUpdate
+    ) -> UserResponse:
         with self._database.session() as session:
             try:
                 user = self._repo.get_by_id(session=session, user_id=user_id)
+                if current_user_id != user_id:
+                    raise UserPermisionException(current_user_id=current_user_id)
             except UserDoesNotExist:
                 raise UserNotFoundByIdException(user_id=user_id)
             if data.email and data.email != user.email:
@@ -100,6 +101,8 @@ class UpdateUserUseCase:
                 if existing_email:
                     raise UserEmailIsNotUniqueException(user_email=data.email)
             user = self._repo.update_user(session=session, user=user, data=data)
+            session.commit()
+            session.refresh(user)
         return UserResponse.model_validate(obj=user)
 
 
@@ -117,3 +120,4 @@ class DeleteUserUseCase:
             except UserPermissionDenied:
                 raise UserPermisionException(current_user_id=current_user_id)
             self._repo.delete_user(session=session, user=user)
+            session.commit()

@@ -14,6 +14,7 @@ from api.depends import (
     create_user_use_case,
     update_user_use_case,
     delete_user_use_case,
+    get_current_user,
 )
 from core.exceptions.domain_exceptions import (
     UserNotFoundByIdException,
@@ -22,6 +23,7 @@ from core.exceptions.domain_exceptions import (
     UserEmailIsNotUniqueException,
     UserPermisionException,
 )
+from schemas.auth import UserData
 from schemas.error import ErrorResponse, ValidationErrorResponse
 
 router = APIRouter()
@@ -108,6 +110,7 @@ async def create_user(
     response_model=UserResponse,
     responses={
         401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
         422: {"model": ValidationErrorResponse},
@@ -117,10 +120,18 @@ async def create_user(
 async def update_user(
     user_id: int,
     user: UserUpdate,
+    current_user: UserData = Depends(get_current_user),
     use_case: UpdateUserUseCase = Depends(update_user_use_case),
 ) -> UserResponse:
     try:
-        return await use_case.execute(user_id=user_id, data=user)
+        return await use_case.execute(
+            user_id=user_id, data=user, current_user_id=current_user.id
+        )
+    except UserPermisionException as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403,
+            detail=exc.get_detail(),
+        )
     except UserNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -146,11 +157,11 @@ async def update_user(
 )
 async def delete_user(
     user_id: int,
-    current_user_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: DeleteUserUseCase = Depends(delete_user_use_case),
 ) -> None:
     try:
-        await use_case.execute(user_id=user_id, current_user_id=current_user_id)
+        await use_case.execute(user_id=user_id, current_user_id=current_user.id)
     except UserNotFoundByIdException as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

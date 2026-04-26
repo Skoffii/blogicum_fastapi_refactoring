@@ -69,6 +69,8 @@ class CreateCategoryUseCase:
                 session.commit()
             except CategoryAlreadyExist:
                 raise CategoryAlreadyExistException(slug=data.slug)
+            session.commit()
+            session.refresh(category)
         return CategoryResponse.model_validate(category)
 
 
@@ -98,6 +100,7 @@ class UpdateCategoryUseCase:
             except CategoryAlreadyExist:
                 raise CategoryAlreadyExistException(slug=data.slug)
             session.commit()
+            session.refresh(category)
         return CategoryResponse.model_validate(updated_category)
 
 
@@ -115,3 +118,4 @@ class DeleteCategoryUseCase:
                 self._repo.delete_category(session=session, category=category)
             except CategoryNotFoundById:
                 raise CategoryNotFoundByIdException(category_id=category_id)
+            session.commit()
