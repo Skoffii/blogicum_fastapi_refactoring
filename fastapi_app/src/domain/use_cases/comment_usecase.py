@@ -4,7 +4,7 @@ from uuid import uuid4
 import shutil
 import os
 from fastapi import UploadFile
-
+import logging
 
 from infrastructure.database import database
 from infrastructure.repos.comment_rep import CommentRepository
@@ -18,6 +18,7 @@ from schemas.comments import (
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
 
+logger = logging.getLogger(__name__)
 
 class GetCommentByIdUseCase:
     def __init__(self):
@@ -25,12 +26,14 @@ class GetCommentByIdUseCase:
         self._repo = CommentRepository()
 
     async def execute(self, comment_id: int) -> CommentResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                comment = self._repo.get_comment(session=session, comment_id=comment_id)
+                comment = await self._repo.get_comment(session=session, comment_id=comment_id)
             except CommentNotFound:
-                raise CommentNotFoundByIdException(comment_id=comment_id)
-        return CommentResponse.model_validate(comment)
+                error = CommentNotFoundByIdException(comment_id=comment_id)
+                logger.error(error.get_detail())
+                raise error
+            return CommentResponse.model_validate(comment)
 
 
 class GetCommentsByPostUseCase:
@@ -40,15 +43,15 @@ class GetCommentsByPostUseCase:
         self._post_repo = PostRepository()
 
     async def execute(self, post_id: int) -> List[CommentResponse]:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                self._post_repo.get_by_id(session=session, post_id=post_id)
+                await self._post_repo.get_by_id(session=session, post_id=post_id)
             except PostNotFoundById:
-                raise PostNotFoundByIdException(post_id=post_id)
-
-            comments = self._repo.get_comments_by_post(session=session, post_id=post_id)
-
-        return [CommentResponse.model_validate(obj=comment) for comment in comments]
+                error = PostNotFoundByIdException(post_id=post_id)
+                logger.error(error.get_detail())
+                raise error
+            comments = await self._repo.get_comments_by_post(session=session, post_id=post_id)
+            return [CommentResponse.model_validate(obj=comment) for comment in comments]
 
 
 class CreateCommentUseCase:
@@ -60,10 +63,10 @@ class CreateCommentUseCase:
     async def execute(
         self, post_id: int, data: CommentRequest, author_id: int
     ) -> CommentResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                self._post_repo.get_by_id(session=session, post_id=post_id)
-                comment = self._repo.create_comment(
+                await self._post_repo.get_by_id(session=session, post_id=post_id)
+                comment = await self._repo.create_comment(
                     session=session,
                     data=data,
                     author_id=author_id,
@@ -71,12 +74,22 @@ class CreateCommentUseCase:
                 )
                 session.commit()
             except PostNotFoundById:
-                raise PostNotFoundByIdException(post_id=post_id)
+                error = PostNotFoundByIdException(post_id=post_id)
+                logger.error(error.get_detail())
+                raise error
             except UserNotFoundById:
-                raise UserNotFoundByIdException(user_id=str(author_id))
-            session.commit()
-            session.refresh(comment)
-        return CommentResponse.model_validate(obj=comment)
+                error = UserNotFoundByIdException(user_id=str(author_id))
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(comment)
+            logger.info(
+                    f"Комментарий {comment.id} создан пользователем {author_id}",
+                    extra={
+                        "event": "comment_created"
+                    }
+                )
+            return CommentResponse.model_validate(obj=comment)
 
 
 class UpdateCommentUseCase:
@@ -87,21 +100,33 @@ class UpdateCommentUseCase:
     async def execute(
         self, comment_id: int, data: CommentUpdate, current_user_id: int
     ) -> CommentResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                comment = self._repo.get_comment(session=session, comment_id=comment_id)
+                comment = await self._repo.get_comment(session=session, comment_id=comment_id)
                 if current_user_id != comment.author_id:
-                    raise UserPermisionException(current_user_id=str(current_user_id))
+                    error = UserPermisionException(current_user_id=str(current_user_id))
+                    logger.error(error.get_detail())
+                    raise error
                 updated_comment = self._repo.update_comment(
                     session=session, comment=comment, data=data
                 )
             except CommentNotFound:
-                raise CommentNotFoundByIdException(comment_id=comment_id)
+                error = CommentNotFoundByIdException(comment_id=comment_id)
+                logger.error(error.get_detail())
+                raise error
             except UserPermissionDenied:
-                raise UserPermisionException(current_user_id=current_user_id)
-            session.commit()
-            session.refresh(comment)
-        return CommentResponse.model_validate(obj=updated_comment)
+                error = UserPermisionException(current_user_id=current_user_id)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(comment)
+            logger.info(
+                    f"Комментарий {comment.id} обновлен пользователем {current_user_id}",
+                    extra={
+                        "event": "comment_updated"
+                    }
+                )
+            return CommentResponse.model_validate(obj=updated_comment)
 
 
 class DeleteCommentUseCase:
@@ -110,19 +135,27 @@ class DeleteCommentUseCase:
         self._repo = CommentRepository()
 
     async def execute(self, comment_id: int, current_user_id: int) -> None:
-        with self._database.session() as session:
-            comment = self._repo.get_comment(session=session, comment_id=comment_id)
+        async  with self._database.session() as session:
+            comment = await self._repo.get_comment(session=session, comment_id=comment_id)
             try:
                 if not comment:
                     raise CommentNotFound
                 if current_user_id != comment.author_id:
                     raise UserPermissionDenied
             except CommentNotFound:
-                raise CommentNotFoundByIdException(comment_id=comment_id)
+                error = CommentNotFoundByIdException(comment_id=comment_id)
+                logger.error(error.get_detail())
+                raise error
             except UserPermissionDenied:
-                raise UserPermisionException(current_user_id=current_user_id)
-            session.commit()
-            self._repo.delete_comment(session=session, comment=comment)
+                error = UserPermisionException(current_user_id=current_user_id)
+            await session.commit()
+            await self._repo.delete_comment(session=session, comment=comment)
+            logger.info(
+                    f"Комментарий {comment.id} удален пользователем {current_user_id}",
+                    extra={
+                        "event": "comment_deleted"
+                    }
+                )
 
 
 class GetCommentImageUseCase:
@@ -133,13 +166,16 @@ class GetCommentImageUseCase:
 
     async def execute(self, comment_id: int) -> FileResponse:
         try:
-            with self._database.session() as session:
-                comment = self._repo.get_comment(session=session, comment_id=comment_id)
+            async with self._database.session() as session:
+                comment = await self._repo.get_comment(session=session, comment_id=comment_id)
         except CommentNotFound:
-            raise CommentNotFoundByIdException(comment_id=comment_id)
-
+            error = CommentNotFoundByIdException(comment_id=comment_id)
+            logger.error(error.get_detail())
+            raise error
         if not comment.image:
-            raise CommentHasNoImageException()
+            error = CommentHasNoImageException()
+            logger.error(error.get_detail())
+            raise error
         full_image_path: str = f"{self.image_folder}/{comment.image}.jpeg"
         return FileResponse(full_image_path, media_type="image/jpeg")
 
@@ -160,16 +196,26 @@ class AddCommentImageUseCase:
         new_image_path: str = f"{self.image_folder}/{new_image_name}.jpeg"
         with open(new_image_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                comment = self._repo.get_comment(session=session, comment_id=comment_id)
+                comment = await self._repo.get_comment(session=session, comment_id=comment_id)
                 if comment.author_id != current_user_id:
-                    raise UserPermisionException(current_user_id=current_user_id)
+                    error = UserPermisionException(current_user_id=current_user_id)
+                    logger.error(error.get_detail())
+                    raise error
             except CommentNotFound:
-                raise CommentNotFoundByIdException(comment_id=comment_id)
+                error = CommentNotFoundByIdException(comment_id=comment_id)
+                logger.error(error.get_detail())
+                raise error
             self._repo.update_comment_image(
                 session=session, comment_id=comment_id, image_filename=new_image_name
             )
-            session.commit()
-            session.refresh(comment)
-        return CommentImageResponse(image=new_image_name)
+            await session.commit()
+            await session.refresh(comment)
+            logger.info(
+                    f"К комментарию {comment.id} добавлено изображение пользователем {current_user_id}",
+                    extra={
+                        "event": "comment_image_updated"
+                    }
+                )
+            return CommentImageResponse(image=new_image_name)

@@ -1,5 +1,7 @@
 from typing import Type, List, Optional
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from infrastructure.models.posts_model import Post
 from infrastructure.models.users_model import User
@@ -13,18 +15,18 @@ class CommentRepository:
     def __init__(self):
         self._model: Type[Comment] = Comment
 
-    def get_comments_by_post(self, session: Session, post_id: int) -> List[Comment]:
-        query = (
-            session.query(self._model)
+    async def get_comments_by_post(self, session: AsyncSession, post_id: int) -> List[Comment]:
+        query = await session.execute(
+            select(self._model)
             .options(joinedload(self._model.author))
             .where(self._model.post_id == post_id)
             .order_by(self._model.created_at.asc())
         )
-        return query.all()
+        return query.scalars().all()
 
-    def get_comment(self, session: Session, comment_id: int) -> Optional[Comment]:
-        query = (
-            session.query(self._model)
+    async def get_comment(self, session: AsyncSession, comment_id: int) -> Optional[Comment]:
+        query = await session.execute(
+            select(self._model)
             .options(joinedload(self._model.author))
             .where(self._model.id == comment_id)
         )
@@ -33,17 +35,19 @@ class CommentRepository:
             raise CommentNotFound
         return comment
 
-    def create_comment(
+    async def create_comment(
         self,
-        session: Session,
+        session: AsyncSession,
         data: CommentRequest,
         author_id: int,
         post_id: int,
     ) -> Comment:
-        post = session.query(Post).where(Post.id == post_id).scalar()
+        get_post = await session.execute(select(Post).where(Post.id == post_id))
+        post = get_post.scalar()
         if not post:
             raise PostNotFoundById
-        author = session.query(User).where(User.id == author_id).scalar()
+        get_author = await session.execute(select(User).where(User.id == author_id))
+        author = get_author.scalar()
         if not author:
             raise UserNotFoundById
 
@@ -51,36 +55,37 @@ class CommentRepository:
             **data.model_dump(), author_id=author_id, post_id=post_id
         )
         session.add(new_comment)
-        session.flush()
-        session.refresh(new_comment)
+        await session.flush()
+        await session.refresh(new_comment)
         return new_comment
 
-    def update_comment(
-        self, session: Session, comment: Comment, data: CommentUpdate
+    async def update_comment(
+        self, session: AsyncSession, comment: Comment, data: CommentUpdate
     ) -> Comment:
         up_comm = data.model_dump(exclude_unset=True)
         for key, value in up_comm.items():
             setattr(comment, key, value)
         if data.author:
-            author = session.query(User).where(User.username == data.author)
+            get_author = await session.execute(select(User).where(User.username == data.author))
+            author = get_author.scalar()
             if not author:
                 raise UserDoesNotExist
 
-        session.commit
-        session.refresh(comment)
+        await session.commit
+        await session.refresh(comment)
         return comment
 
-    def delete_comment(self, session: Session, comment: Comment) -> None:
-        exist = self.get_by_id(session, comment.id)
+    async def delete_comment(self, session: AsyncSession, comment: Comment) -> None:
+        exist = await self.get_by_id(session, comment.id)
         if not exist:
             raise CommentNotFound
-        session.delete(comment)
-        session.commit()
+        await session.delete(comment)
+        await session.commit()
 
-    def update_comment_image(
-        self, session: Session, comment_id: int, image_filename: str
+    async def update_comment_image(
+        self, session: AsyncSession, comment_id: int, image_filename: str
     ) -> Post:
-        comment = self.get_comment(session=session, comment_id=comment_id)
+        comment = await self.get_comment(session=session, comment_id=comment_id)
         comment.image = image_filename
-        session.flush()
+        await session.flush()
         return comment

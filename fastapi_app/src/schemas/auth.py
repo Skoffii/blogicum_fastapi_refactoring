@@ -1,6 +1,6 @@
 from pydantic import Field, BaseModel
 
-from resourses.field_description import ACCESS_TOKEN, TOKEN_TYPE, USERNAME
+from resourses.field_description import ACCESS_TOKEN, TOKEN_TYPE
 
 
 class Token(BaseModel):
@@ -9,5 +9,5 @@ class Token(BaseModel):
 
 
 class UserData(BaseModel):
-    user_id: int
+    id: int
     username: str

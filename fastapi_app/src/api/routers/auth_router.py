@@ -43,6 +43,6 @@ async def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=exc.get_detail(),
         )
-    access_token = await token_use_case.execute(login=user.username)
+    access_token = await token_use_case.execute(login=user.username, user_id=user.id)
 
     return Token(access_token=access_token, token_type="bearer")

@@ -59,7 +59,7 @@ from core.config import settings
 scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
-async def get_current_user(token: str = Depends(scheme)) -> Token:
+async def get_current_user(token: str = Depends(scheme)) -> UserData:
     try:
         payload = jwt.decode(
             token,
@@ -70,7 +70,7 @@ async def get_current_user(token: str = Depends(scheme)) -> Token:
         user_id: int = payload.get("user_id")
         if username is None or user_id is None:
             raise HTTPException(status_code=401, detail="Неверный токен")
-        return UserData(username=username, user_id=user_id)
+        return UserData(username=username, id=user_id)
     except JWTError:
         raise HTTPException(status_code=401, detail="Неверный токен")
 

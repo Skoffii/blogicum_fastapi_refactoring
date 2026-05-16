@@ -28,7 +28,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/locations/{location_id}",
+    "/locations/{location_id}/",
     response_model=LocationResponse,
     responses={
         200: {"model": LocationResponse},
@@ -77,7 +77,7 @@ async def get_all_locations(
 
 
 @router.post(
-    "/locations/{location_id}",
+    "/locations/create/",
     response_model=LocationResponse,
     responses={
         200: {"model": LocationResponse},
@@ -108,7 +108,7 @@ async def create_location(
 
 
 @router.put(
-    "/locations/{location_id}",
+    "/locations/{location_id}/edit/",
     response_model=LocationResponse,
     responses={
         200: {"model": LocationResponse},
@@ -145,7 +145,7 @@ async def update_location(
 
 
 @router.delete(
-    "/locations/{location_id}",
+    "/locations/{location_id}/delete/",
     responses={
         204: {"detail": "NO_CONTENT"},
         401: {"model": ErrorResponse},

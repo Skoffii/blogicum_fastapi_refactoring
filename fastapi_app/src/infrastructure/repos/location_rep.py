@@ -1,67 +1,69 @@
 from typing import Optional, Type, List
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from infrastructure.models.locations_model import Location
 from core.exceptions.infrastructure_exceptions import *
-from schemas.location import LocationRequest
+from schemas.location import LocationRequest, LocationUpdate
 
 
 class LocationRepository:
     def __init__(self):
         self._model: Type[Location] = Location
 
-    def get_by_id(self, session: Session, location_id: int) -> Optional[Location]:
-        query = session.query(self._model).where(self._model.id == location_id)
+    async def get_by_id(self, session: AsyncSession, location_id: int) -> Optional[Location]:
+        query = await session.execute(select(self._model).where(self._model.id == location_id))
         location = query.scalar()
         if not location:
             raise LocationNotFoundById
         return location
 
-    def get_by_name(self, session: Session, location_name: int) -> Optional[Location]:
-        query = session.query(self._model).where(self._model.name == location_name)
+    async def get_by_name(self, session: AsyncSession, location_name: str) -> Optional[Location]:
+        query = await session.execute(select(self._model).where(self._model.name == location_name))
         location = query.scalar()
         if not location:
             raise LocationNotFoundByName
         return location
 
-    def get_all(
-        self, session: Session, skip: int = 0, limit: int = 20
+    async def get_all(
+        self, session: AsyncSession, skip: int = 0, limit: int = 20
     ) -> List[Location]:
-        query = session.query(self._model).offset(skip).limit(limit)
-        return query.all()
+        query = await session.execute(select(self._model).offset(skip).limit(limit))
+        return query.scalars().all()
 
-    def create_location(self, session: Session, data: LocationRequest) -> Location:
-        existing = (
-            session.query(self._model).where(self._model.name == data.name).scalar()
+    async def create_location(self, session: AsyncSession, data: LocationRequest) -> Location:
+        if_existing = await session.execute(
+            select(self._model).where(self._model.name == data.name)
         )
+        existing = if_existing.scalar()
         if existing:
             raise LocationAlreadyExist
         new_location = self._model(name=data.name, is_published=data.is_published)
         session.add(new_location)
-        session.flush()
-        session.refresh(new_location)
+        await session.flush()
+        await session.refresh(new_location)
         return new_location
 
-    def update_location(
+    async def update_location(
         self,
-        session: Session,
+        session: AsyncSession,
         location: Location,
-        name: str | None = None,
-        is_published: bool | None = None,
+        data: LocationUpdate
     ) -> Location:
-        if name and name != location.name:
-            existing = (
-                session.query(self._model).where(self._model.name == name).scalar()
+        if data.name and data.name != location.name:
+            if_existing = await session.execute(
+                select(self._model).where(self._model.name == data.name)
             )
+            existing = if_existing.scalar()
             if existing:
                 raise LocationAlreadyExist
-            location.name = name
-        if is_published is not None:
-            location.is_published = is_published
+            location.name = data.name
+        if data.is_published is not None:
+            location.is_published = data.is_published
         return location
 
-    def delete_location(self, session: Session, location: Location) -> None:
-        exist = self.get_by_id(session, location.id)
+    async def delete_location(self, session: AsyncSession, location: Location) -> None:
+        exist = await self.get_by_id(session, location.id)
         if not exist:
             raise LocationNotFoundById
-        session.delete(location)
+        await session.delete(location)

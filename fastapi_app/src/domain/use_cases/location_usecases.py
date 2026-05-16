@@ -1,10 +1,13 @@
 from infrastructure.database import database
 from infrastructure.repos.location_rep import LocationRepository
 from schemas.location import LocationResponse, LocationUpdate, LocationRequest
-
+from typing import List
+import logging
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
 
+
+logger = logging.getLogger(__name__)
 
 class GetLocationByIdUseCase:
     def __init__(self):
@@ -12,13 +15,15 @@ class GetLocationByIdUseCase:
         self._repo = LocationRepository()
 
     async def execute(self, location_id: int) -> LocationResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                location = self._repo.get_by_id(
+                location = await self._repo.get_by_id(
                     session=session, location_id=location_id
                 )
             except LocationNotFoundById:
-                raise LocationNotFoundByIdException(location_id=location_id)
+                error = LocationNotFoundByIdException(location_id=location_id)
+                logger.error(error.get_detail())
+                raise error
         return LocationResponse.model_validate(obj=location)
 
 
@@ -28,8 +33,8 @@ class GetAllLocationsUseCase:
         self._repo = LocationRepository()
 
     async def execute(self, skip: int = 0, limit: int = 20) -> List[LocationResponse]:
-        with self._database.session() as session:
-            locations = self._repo.get_all(session=session, skip=skip, limit=limit)
+        async with self._database.session() as session:
+            locations = await self._repo.get_all(session=session, skip=skip, limit=limit)
         return [LocationResponse.model_validate(loc) for loc in locations]
 
 
@@ -39,15 +44,23 @@ class CreateLocationUseCase:
         self._repo = LocationRepository()
 
     async def execute(self, data: LocationRequest) -> LocationResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                location = self._repo.create_location(session=session, data=data)
+                location = await self._repo.create_location(session=session, data=data)
                 session.commit()
             except LocationAlreadyExist:
-                raise LocationAlreadyExistException(location_name=data.name)
-            session.commit()
-            session.refresh(location)
-        return LocationResponse.model_validate(location)
+                error = LocationAlreadyExistException(location_name=data.name)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(location)
+            logger.info(
+                    f"Локация {location.name} создана",
+                    extra={
+                        "event": "location_created"
+                    }
+                )
+            return LocationResponse.model_validate(location)
 
 
 class UpdateLocationUseCase:
@@ -60,9 +73,9 @@ class UpdateLocationUseCase:
         location_id: int,
         data: LocationUpdate,
     ) -> LocationUpdate:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                location = self._repo.get_by_id(
+                location = await self._repo.get_by_id(
                     session=session, location_id=location_id
                 )
                 updated_location = self._repo.update_location(
@@ -72,14 +85,24 @@ class UpdateLocationUseCase:
                     is_published=data.is_published,
                 )
             except LocationNotFoundById:
-                raise LocationNotFoundByIdException(location_id=location.location_id)
+                error = LocationNotFoundByIdException(location_id=location.location_id)
+                logger.error(error.get_detail())
+                raise error
             except LocationAlreadyExist:
-                raise LocationAlreadyExistException(
-                    location_name=updated_location.location_name
+                error = LocationAlreadyExistException(
+                    location_name=updated_location.name
                 )
-            session.commit()
-            session.refresh(location)
-        return LocationResponse.model_validate(updated_location)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(location)
+            logger.info(
+                f"Локация {location.name} обновлена",
+                extra={
+                    "event": "location_updated"
+                }
+            )
+            return LocationResponse.model_validate(updated_location)
 
 
 class DeleteLocationUseCase:
@@ -88,12 +111,20 @@ class DeleteLocationUseCase:
         self._repo = LocationRepository()
 
     async def execute(self, location_id: int) -> None:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                location = self._repo.get_by_id(
+                location = await self._repo.get_by_id(
                     session=session, location_id=location_id
                 )
-                self._repo.delete_location(session=session, location=location)
+                await self._repo.delete_location(session=session, location=location)
+                logger.info(
+                    f"Локация {location.name} удалена",
+                    extra={
+                        "event": "location_deleted"
+                    }
+                )
             except LocationNotFoundById:
-                raise LocationNotFoundByIdException(location_id=location_id)
-            session.commit()
+                error = LocationNotFoundByIdException(location_id=location_id)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()

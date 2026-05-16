@@ -64,7 +64,7 @@ async def get_posts(
 
 
 @router.get(
-    "/posts/{post_id}",
+    "/posts/{post_id}/",
     response_model=PostResponse,
     responses={
         200: {"model": PostResponse},
@@ -100,7 +100,7 @@ async def get_post_by_id(
 
 
 @router.get(
-    "/authors/{login}/posts",
+    "/authors/{login}/posts/",
     response_model=PostResponse,
     responses={
         200: {"model": PostResponse},
@@ -126,7 +126,7 @@ async def get_posts_by_author(
 
 
 @router.get(
-    "/categories/{category_slug}/posts",
+    "/categories/{category_slug}/posts/",
     response_model=List[PostResponse],
     responses={
         200: {"model": PostResponse},
@@ -159,10 +159,10 @@ async def get_posts_by_category(
 
 
 @router.get(
-    "/posts/{post_id}/images",
+    "/posts/{post_id}/images/",
     response_model=PostImageResponse,
     responses={
-        200: {"model": PostResponse},
+        200: {"model": PostImageResponse},
         401: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         422: {"model": ValidationErrorResponse},
@@ -188,7 +188,7 @@ async def get_post_image(
 
 
 @router.post(
-    "/posts/create",
+    "/posts/create/",
     response_model=PostResponse,
     responses={
         201: {"model": PostResponse},
@@ -222,6 +222,17 @@ async def create_post(
         )
 
 
+@router.post(
+    "/posts/{post_id}/add_image/",
+    response_model=PostImageResponse,
+    responses={
+        201: {"model": PostImageResponse},
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ValidationErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
 async def add_post_image(
     post_id: int,
     image: UploadFile = File(...),
@@ -254,10 +265,10 @@ async def add_post_image(
 
 
 @router.put(
-    "/posts/{post_id}/edit",
+    "/posts/{post_id}/edit/",
     response_model=PostResponse,
     responses={
-        201: {"model": PostResponse},
+        200: {"model": PostResponse},
         401: {"model": ErrorResponse},
         403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
@@ -300,7 +311,7 @@ async def update_post(
 
 
 @router.delete(
-    "/posts/{post_id}/delete",
+    "/posts/{post_id}/delete/",
     responses={
         204: {"detail": "NO_CONTENT"},
         401: {"model": ErrorResponse},

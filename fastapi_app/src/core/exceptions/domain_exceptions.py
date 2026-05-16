@@ -130,7 +130,7 @@ class CategoryAlreadyExistException(BaseDomainException):
 
 
 class LocationNotFoundByIdException(BaseDomainException):
-    _exception_text_template = "Локация '{location_name}' не найдена"
+    _exception_text_template = "Локация '{location_id}' не найдена"
 
     def __init__(self, location_id: int) -> None:
         self._exception_text_template = self._exception_text_template.format(

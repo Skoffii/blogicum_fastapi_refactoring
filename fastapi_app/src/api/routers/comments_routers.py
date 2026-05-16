@@ -128,7 +128,7 @@ async def get_post_image(
 
 
 @router.post(
-    "/posts/{post_id}/comments/{comment_id}",
+    "/posts/{post_id}/comments/{comment_id}/create/",
     response_model=CommentResponse,
     responses={
         201: {"model": CommentResponse},
@@ -141,14 +141,14 @@ async def get_post_image(
 async def create_comment(
     post_id: int,
     comment: CommentRequest,
-    author_id: int,
+    current_user: UserData = Depends(get_current_user),
     use_case: CreateCommentUseCase = Depends(create_comment_use_case),
 ) -> CommentResponse:
     try:
         return await use_case.execute(
             post_id=post_id,
             data=comment,
-            author_id=author_id,
+            author_id=current_user.id,
         )
     except PostNotFoundByIdException as exc:
         raise HTTPException(
@@ -181,7 +181,6 @@ async def create_comment(
 )
 async def add_comment_image(
     comment_id: int,
-    post_id: int,
     image: UploadFile = File(...),
     current_user: UserData = Depends(get_current_user),
     use_case: AddCommentImageUseCase = Depends(add_comment_image_use_case),
@@ -213,11 +212,12 @@ async def add_comment_image(
 
 
 @router.put(
-    "posts/{post_id}/comments/{comment_id}",
+    "posts/{post_id}/comments/{comment_id}/edit/",
     response_model=CommentResponse,
     responses={
         200: {"model": CommentResponse},
         401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         422: {"model": ValidationErrorResponse},
         500: {"model": ErrorResponse},
@@ -255,10 +255,11 @@ async def update_comment(
 
 
 @router.delete(
-    "/comments/{comment_id}/delete",
+    "/comments/{comment_id}/delete/",
     responses={
         204: {"detail": "NO_CONTENT"},
         401: {"model": ErrorResponse},
+        403: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         422: {"model": ValidationErrorResponse},
         500: {"model": ErrorResponse},

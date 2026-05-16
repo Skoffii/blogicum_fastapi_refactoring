@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Depends
-from jose import JWTError
-from core.security import oauth2_scheme
+from jose import JWTError, jwt
+from core.config import oauth2_scheme
 from core.config import settings
 from infrastructure.database import database
 from infrastructure.repos.user_rep import UserRepository
@@ -32,8 +32,8 @@ class AuthService:
             raise CredentialsException(_AUTH_MSG)
 
         try:
-            with database.session() as session:
-                user = UserRepository().get_by_login(session=session, login=username)
+            async with database.session() as session:
+                user = await UserRepository().get_by_login(session=session, login=username)
         except Exception:
             raise CredentialsException(_AUTH_MSG)
 

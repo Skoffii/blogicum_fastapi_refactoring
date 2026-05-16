@@ -3,7 +3,11 @@ from infrastructure.repos.user_rep import UserRepository
 from schemas.users import UserResponse, UserUpdate, UserRequest
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
-from datetime import datetime
+from sqlalchemy import select
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class GetUserByIdUseCase:
@@ -13,11 +17,12 @@ class GetUserByIdUseCase:
 
     async def execute(self, user_id: int) -> UserResponse:
         try:
-            with self._database.session() as session:
-                user = self._repo.get_by_id(session=session, user_id=user_id)
+            async with self._database.session() as session:
+                user = await self._repo.get_by_id(session=session, user_id=user_id)
         except UserNotFoundById:
-            raise UserNotFoundByIdException(user_id=user_id)
-
+            error = UserNotFoundByIdException(user_id=user_id)
+            logger.error(error.get_detail())
+            raise error
         return UserResponse.model_validate(obj=user)
 
 
@@ -28,11 +33,12 @@ class GetUserByLoginUseCase:
 
     async def execute(self, login: str) -> UserResponse:
         try:
-            with self._database.session() as session:
-                user = self._repo.get_by_login(session=session, login=login)
+            async with self._database.session() as session:
+                user = await self._repo.get_by_login(session=session, login=login)
         except UserNotFoundByUsername:
-            raise UserNotFoundByUsernameException(username=login)
-
+            error = UserNotFoundByUsernameException(username=login)
+            logger.error(error.get_detail())
+            raise error
         return UserResponse.model_validate(obj=user)
 
 
@@ -42,38 +48,40 @@ class CreateUserUseCase:
         self._repo = UserRepository()
 
     async def execute(self, data: UserRequest) -> UserResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                user = self._repo.get_by_login(session=session, login=data.username)
+                user = await self._repo.get_by_login(session=session, login=data.username)
             except UserAlreadyExist:
-                raise UserAlreadyExistExeption(username=data.username)
+                error = UserAlreadyExistExeption(username=data.username)
+                logger.error(error.get_detail())
+                raise error
             except UserNotFoundByUsername:
                 pass
             if data.email:
-                existing_email = (
-                    session.query(self._repo._model)
+                get_existing_email = await session.execute(
+                    select(self._repo._model)
                     .where(self._repo._model.email == data.email)
-                    .scalar()
                 )
+                existing_email = get_existing_email.scalar_one_or_none()
                 if existing_email:
-                    raise UserEmailIsNotUniqueException(user_email=data.email)
+                    error = UserEmailIsNotUniqueException(user_email=data.email)
+                    logger.error(error.get_detail())
+                    raise error
 
-        pwd = data.password.get_secret_value()
-        user = self._repo.create_user(
+        user = await self._repo.create_user(
             session=session,
-            username=data.username,
-            password=pwd,
-            first_name=data.first_name,
-            last_name=data.last_name,
-            email=data.email,
-            is_staff=False,
-            is_superuser=False,
-            is_active=True,
-            last_login=None,
-            date_joined=datetime.now(),
+            data = data,
         )
-        session.commit()
-        session.refresh(user)
+        await session.commit()
+        await session.refresh(user)
+        logger.info(
+                f"Зарегистрирован новый пользователь: {user.username}",
+                extra={
+                    "user_id": user.id,
+                    "username": user.username,
+                    "event": "user_created"
+                }
+            )
         return UserResponse.model_validate(obj=user)
 
 
@@ -85,25 +93,37 @@ class UpdateUserUseCase:
     async def execute(
         self, user_id: int, current_user_id: int, data: UserUpdate
     ) -> UserResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                user = self._repo.get_by_id(session=session, user_id=user_id)
+                user = await self._repo.get_by_id(session=session, user_id=user_id)
                 if current_user_id != user_id:
-                    raise UserPermisionException(current_user_id=current_user_id)
+                    error = UserPermisionException(current_user_id=current_user_id)
+                    logger.error(error.get_detail())
+                    raise error
             except UserDoesNotExist:
-                raise UserNotFoundByIdException(user_id=user_id)
+                error = UserNotFoundByIdException(user_id=user_id)
+                logger.error(error.get_detail())
+                raise error
             if data.email and data.email != user.email:
-                existing_email = (
-                    session.query(self._repo._model)
+                get_existing_email = await session.execute(
+                    select(self._repo._model)
                     .where(self._repo._model.email == data.email)
-                    .scalar()
                 )
+                existing_email = get_existing_email.scalar_one_or_none()
                 if existing_email:
-                    raise UserEmailIsNotUniqueException(user_email=data.email)
-            user = self._repo.update_user(session=session, user=user, data=data)
-            session.commit()
-            session.refresh(user)
-        return UserResponse.model_validate(obj=user)
+                    error = UserEmailIsNotUniqueException(user_email=data.email)
+                    logger.error(error.get_detail())
+                    raise error
+            user = await self._repo.update_user(session=session, user=user, data=data)
+            await session.commit()
+            await session.refresh(user)
+            logger.info(
+                    f"Данные пользователя {user.username} обновлены",
+                    extra={
+                        "event": "user_updated"
+                    }
+                )
+            return UserResponse.model_validate(obj=user)
 
 
 class DeleteUserUseCase:
@@ -112,12 +132,25 @@ class DeleteUserUseCase:
         self._repo = UserRepository()
 
     async def execute(self, user_id: int, current_user_id: int) -> None:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                user = self._repo.get_by_id(session=session, user_id=user_id)
+                user = await self._repo.get_by_id(session=session, user_id=user_id)
                 if current_user_id != user_id:
                     raise UserPermissionDenied
+            except UserNotFoundById:
+                error = UserNotFoundByIdException(user_id=user_id)
+                logger.error(error.get_detail())
+                raise error
+            
             except UserPermissionDenied:
-                raise UserPermisionException(current_user_id=current_user_id)
-            self._repo.delete_user(session=session, user=user)
-            session.commit()
+                error = UserPermisionException(current_user_id=current_user_id)
+                logger.error(error.get_detail())
+                raise error
+            logger.info(
+                f"Пользователь {user.username} удален",
+                extra={
+                    "event": "user_deleted"
+                }
+            )
+            await self._repo.delete_user(session=session, user=user)
+            await session.commit()

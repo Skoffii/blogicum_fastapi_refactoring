@@ -86,7 +86,7 @@ async def get_category_by_slug(
 
 
 @router.get(
-    "/categories/id/{category_id}",
+    "/categories/{category_id}",
     response_model=CategoryResponse,
     responses={
         200: {"model": CategoryResponse},
@@ -115,7 +115,7 @@ async def get_category_by_id(
 
 
 @router.post(
-    "/categories/{slug}",
+    "/categories/create/{",
     response_model=CategoryResponse,
     responses={
         200: {"model": CategoryResponse},
@@ -145,7 +145,7 @@ async def create_category(
 
 
 @router.put(
-    "/categories/{slug}",
+    "/categories/{slug}/edit/",
     response_model=CategoryResponse,
     responses={
         201: {"model": CategoryResponse},

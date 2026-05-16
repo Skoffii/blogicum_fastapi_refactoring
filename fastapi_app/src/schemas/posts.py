@@ -55,7 +55,6 @@ class PostBase(BaseModel):
 
 
 class PostRequest(PostBase):
-    pub_date: Optional[datetime] = Field(default=None)
     location_id: int | None = None
     category_slug: str | None = Field(default=None)
 
@@ -68,7 +67,6 @@ class PostRequest(PostBase):
 class PostUpdate(BaseModel):
     title: str = Field(default=None)
     text: str = Field(default=None)
-    pub_date: Optional[datetime] = Field(default=None)
     is_published: bool = Field(default=None)
     image: str = Field(default=None)
     location_id: int | None = None
@@ -95,7 +93,7 @@ class PostResponse(BaseModel):
     created_at: datetime
     title: str = Field(default=None)
     text: str = Field(default=None)
-    pub_date: Optional[datetime] = Field(default=None)
+    pub_date: datetime
     is_published: bool = Field(default=None)
     image: str | None = Field(default=None)
     location_id: int | None = Field(default=None)

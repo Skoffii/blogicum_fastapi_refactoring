@@ -19,8 +19,8 @@ class Comment(Base):
     post_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("blog_post.id", ondelete="CASCADE"), nullable=False
     )
-    author_id: Mapped[str] = mapped_column(
-        String, ForeignKey("auth_user.id"), nullable=False
+    author_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("auth_user.id"), nullable=False
     )
     image: Mapped[str] = mapped_column(String, nullable=True)
 

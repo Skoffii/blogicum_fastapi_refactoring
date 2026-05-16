@@ -5,6 +5,7 @@ from fastapi import UploadFile
 from uuid import uuid4
 import shutil
 import os
+import logging
 
 from infrastructure.database import database
 from infrastructure.repos.post_rep import PostRepository
@@ -16,14 +17,16 @@ from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
 
 
+logger = logging.getLogger(__name__)
+
 class GetPostUseCase:
     def __init__(self):
         self._database = database
         self._repo = PostRepository()
 
     async def execute(self, skip: int = 0, limit: int = 20) -> List[PostResponse]:
-        with self._database.session() as session:
-            posts = self._repo.get_posts(session=session, skip=skip, limit=limit)
+        async with self._database.session() as session:
+            posts = await self._repo.get_posts(session=session, skip=skip, limit=limit)
         return [PostResponse.model_validate(obj=post) for post in posts]
 
 
@@ -35,9 +38,9 @@ class GetPostByIdUseCase:
     async def execute(
         self, post_id: int, cur_user_id: Optional[int] = None
     ) -> PostResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                post = self._repo.get_by_id(session=session, post_id=post_id)
+                post = await self._repo.get_by_id(session=session, post_id=post_id)
 
                 can_view = False
                 if cur_user_id == post.author_id:
@@ -52,10 +55,14 @@ class GetPostByIdUseCase:
                 if not can_view:
                     raise PostAccessDenied
             except PostAccessDenied:
-                raise UserPermissionDenied(cur_user_id=cur_user_id)
+                error = UserPermissionDenied(cur_user_id=cur_user_id)
+                logger.error(error.get_detail())
+                raise error
             except PostNotFoundById:
-                raise PostNotFoundByIdException(post_id=post_id)
-        return PostResponse.model_validate(obj=post)
+                error = PostNotFoundByIdException(post_id=post_id)
+                logger.error(error.get_detail())
+                raise error
+            return PostResponse.model_validate(obj=post)
 
 
 class GetPostsByAuthorUseCase:
@@ -65,19 +72,20 @@ class GetPostsByAuthorUseCase:
         self._user_repo = UserRepository()
 
     async def execute(self, login: str, skip: int = 0, limit: int = 10) -> dict:
-        with self._database.session() as session:
-            user = self._user_repo.get_by_login(session=session, login=login)
+        async with self._database.session() as session:
+            user = await self._user_repo.get_by_login(session=session, login=login)
             try:
-                posts = self._repo.get_by_author(
+                posts = await self._repo.get_by_author(
                     session=session, author_id=user.id, skip=skip, limit=limit
                 )
             except UserDoesNotExist:
-                raise UserNotFoundByUsernameException(username=login)
-
-        return {
-            "user": UserResponse.model_validate(obj=user),
-            "posts": [PostResponse.model_validate(obj=post) for post in posts],
-        }
+                error = UserNotFoundByUsernameException(username=login)
+                logger.error(error.get_detail())
+                raise error
+            return {
+                "user": UserResponse.model_validate(obj=user),
+                "posts": [PostResponse.model_validate(obj=post) for post in posts],
+            }
 
 
 class GetPostsByCategoryUseCase:
@@ -89,17 +97,19 @@ class GetPostsByCategoryUseCase:
     async def execute(
         self, category_slug: str, skip: int = 0, limit: int = 10
     ) -> List[PostResponse]:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                category = self._category_repo.get_by_slug(
+                category = await self._category_repo.get_by_slug(
                     session=session, slug=category_slug
                 )
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=category_slug)
-            posts = self._repo.get_by_category(
+                error = CategoryNotFoundBySlugException(category_slug=category_slug)
+                logger.error(error.get_detail())
+                raise error
+            posts = await self._repo.get_by_category(
                 session=session, category_id=category.id, skip=skip, limit=limit
             )
-        return [PostResponse.model_validate(obj=post) for post in posts]
+            return [PostResponse.model_validate(obj=post) for post in posts]
 
 
 class CreatePostUseCase:
@@ -108,20 +118,32 @@ class CreatePostUseCase:
         self._repo = PostRepository()
 
     async def execute(self, data: PostRequest, author_id: int) -> PostResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                post = self._repo.create_post(
+                post = await self._repo.create_post(
                     session=session, data=data, author_id=author_id
                 )
             except UserNotFoundById:
-                raise UserNotFoundByIdException(user_id=author_id)
+                error = UserNotFoundByIdException(user_id=author_id)
+                logger.error(error.get_detail())
+                raise error
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
+                error = CategoryNotFoundBySlugException(category_slug=data.category_slug)
+                logger.error(error.get_detail())
+                raise error
             except CategoryNotPublished:
-                raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
-            session.commit()
-            session.refresh(post)
-        return PostResponse.model_validate(obj=post)
+                error = CategoryNotFoundBySlugException(category_slug=data.category_slug)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(post)
+            logger.info(
+                    f"Пост {post.id} создан пользователем {author_id}",
+                    extra={
+                        "event": "post_created"
+                    }
+                )
+            return PostResponse.model_validate(obj=post)
 
 
 class UpdatePostUseCase:
@@ -132,25 +154,39 @@ class UpdatePostUseCase:
     async def execute(
         self, post_id: int, data: PostUpdate, current_user_id: int
     ) -> PostResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                post = self._repo.get_by_id(session=session, post_id=post_id)
+                post = await self._repo.get_by_id(session=session, post_id=post_id)
 
                 if current_user_id != post.author_id:
                     raise PostAccessDenied
             except PostAccessDenied:
-                raise UserPermisionException(current_user_id=current_user_id)
+                error = UserPermisionException(current_user_id=current_user_id)
+                logger.error(error.get_detail())
+                raise error
             except PostDoesNotExist:
-                raise PostNotFoundByIdException(post_id=post_id)
+                error = PostNotFoundByIdException(post_id=post_id)
+                logger.error(error.get_detail())
+                raise error
             try:
-                post = self._repo.update_post(session=session, post=post, data=data)
+                post = await self._repo.update_post(session=session, post=post, data=data)
             except LocationNotFoundByName:
-                raise LocationNotFoundByNameException(location_name=data.location_name)
+                error = LocationNotFoundByNameException(location_name=data.location_name)
+                logger.error(error.get_detail())
+                raise error
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=data.category_slug)
-            session.commit()
-            session.refresh(post)
-        return PostResponse.model_validate(obj=post)
+                error = CategoryNotFoundBySlugException(category_slug=data.category_slug)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(post)
+            logger.info(
+                    f"Пост {post.id} обновлен пользователем {current_user_id}",
+                    extra={
+                        "event": "post_updated"
+                    }
+                )
+            return PostResponse.model_validate(obj=post)
 
 
 class DeletePostUseCase:
@@ -159,18 +195,27 @@ class DeletePostUseCase:
         self._repo = PostRepository()
 
     async def execute(self, post_id: int, current_user_id: int) -> None:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                post = self._repo.get_by_id(session=session, post_id=post_id)
-
+                post = await self._repo.get_by_id(session=session, post_id=post_id)
                 if current_user_id != post.author_id:
                     raise PostAccessDenied
             except PostAccessDenied:
-                raise UserPermissionDenied(current_user_id=current_user_id)
+                error = UserPermissionDenied(current_user_id=current_user_id)
+                logger.error(error.get_detail())
+                raise error
             except PostDoesNotExist:
-                raise PostNotFoundByIdException(post_id=post_id)
-            session.commit()
-            self._repo.delete_post(session=session, post=post)
+                error = PostNotFoundByIdException(post_id=post_id)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            logger.info(
+                    f"Пост {post.id} удален пользователем {current_user_id}",
+                    extra={
+                        "event": "post_deleted"
+                    }
+                )
+            await self._repo.delete_post(session=session, post=post)
 
 
 class GetPostImageUseCase:
@@ -181,13 +226,17 @@ class GetPostImageUseCase:
 
     async def execute(self, post_id: int) -> FileResponse:
         try:
-            with self._database.session() as session:
-                post = self._repo.get_by_id(session=session, post_id=post_id)
+            async with self._database.session() as session:
+                post = await self._repo.get_by_id(session=session, post_id=post_id)
         except PostNotFoundById:
-            raise PostNotFoundByIdException(id=post_id)
+            error = PostNotFoundByIdException(post_id=post_id)
+            logger.error(error.get_detail())
+            raise error
 
         if not post.image:
-            raise PostHasNoImageException()
+            error = PostHasNoImageException()
+            logger.error(error.get_detail())
+            raise error
 
         full_image_path: str = f"{self.image_folder}/{post.image}"
         return FileResponse(full_image_path, media_type="image/jpeg")
@@ -200,13 +249,11 @@ class AddPostImageUseCase:
         self.image_folder = "./../images"
 
     async def execute(
-        self, image: UploadFile, post_id: int, curent_user_id: int
+        self, image: UploadFile, post_id: int, current_user_id: int
     ) -> PostImageResponse:
         os.makedirs(self.image_folder, exist_ok=True)
         if not image.filename or image.filename.split(".")[-1].lower() not in [
             "jpeg",
-            "jpg",
-            "png",
         ]:
             raise UploadFileIsNotImageException()
         file_extension = image.filename.split(".")[-1]
@@ -214,16 +261,26 @@ class AddPostImageUseCase:
         new_image_path: str = f"{self.image_folder}/{new_image_name}"
         with open(new_image_path, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                post = self._repo.get_by_id(session=session, post_id=post_id)
-                if post.author_id != curent_user_id:
-                    raise UserPermisionException(current_user_id=curent_user_id)
+                post = await self._repo.get_by_id(session=session, post_id=post_id)
+                if post.author_id != current_user_id:
+                    error = UserPermisionException(current_user_id=current_user_id)
+                    logger.error(error.get_detail())
+                    raise error
             except PostNotFoundById:
-                raise PostNotFoundByIdException(post_id=post_id)
-            self._repo.update_post_image(
-                session=session, post_id=post.post_id, image_filename=new_image_name
+                error = PostNotFoundByIdException(post_id=post_id)
+                logger.error(error.get_detail())
+                raise error
+            await self._repo.update_post_image(
+                session=session, post_id=post.id, image_filename=new_image_name
             )
-            session.commit()
-            session.refresh(post)
+            await session.commit()
+            await session.refresh(post)
+        logger.info(
+                    f"К посту {post.id} добавлено изображение пользователем {current_user_id}",
+                    extra={
+                        "event": "post_image_updated"
+                    }
+                )
         return PostImageResponse(image=new_image_name)

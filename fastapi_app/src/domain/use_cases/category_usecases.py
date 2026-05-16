@@ -1,3 +1,4 @@
+import logging
 from infrastructure.database import database
 from infrastructure.repos.category_rep import CategoryRepository
 from schemas.category import CategoryResponse, CategoryUpdate, CategoryRequest
@@ -6,6 +7,7 @@ from typing import List
 from core.exceptions.infrastructure_exceptions import *
 from core.exceptions.domain_exceptions import *
 
+logger = logging.getLogger(__name__)
 
 class GetAllCategoriesUseCase:
     def __init__(self):
@@ -13,8 +15,8 @@ class GetAllCategoriesUseCase:
         self._repo = CategoryRepository()
 
     async def execute(self, skip: int = 0, limit: int = 20) -> List[CategoryResponse]:
-        with self._database.session() as session:
-            categories = self._repo.get_all(session=session, skip=skip, limit=limit)
+        async with self._database.session() as session:
+            categories = await self._repo.get_all(session=session, skip=skip, limit=limit)
         return [CategoryResponse.model_validate(cat) for cat in categories]
 
 
@@ -24,11 +26,13 @@ class GetCategoryBySlugUseCase:
         self._repo = CategoryRepository()
 
     async def execute(self, slug: str) -> CategoryResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                category = self._repo.get_by_slug(session=session, slug=slug)
+                category = await self._repo.get_by_slug(session=session, slug=slug)
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=slug)
+                error = CategoryNotFoundBySlugException(category_slug=slug)
+                logger.error(error.get_detail())
+                raise error
         return CategoryResponse.model_validate(obj=category)
 
 
@@ -38,13 +42,15 @@ class GetCategoryByIdUseCase:
         self._repo = CategoryRepository()
 
     async def execute(self, category_id: int) -> CategoryResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                category = self._repo.get_by_id(
+                category = await self._repo.get_by_id(
                     session=session, category_id=category_id
                 )
             except CategoryNotFoundById:
-                raise CategoryNotFoundByIdException(category_id=category_id)
+                error = CategoryNotFoundByIdException(category_id=category_id)
+                logger.error(error.get_detail())
+                raise error
         return CategoryResponse.model_validate(obj=category)
 
 
@@ -57,21 +63,26 @@ class CreateCategoryUseCase:
         self,
         data: CategoryRequest,
     ) -> CategoryResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                category = self._repo.create_category(
+                category = await self._repo.create_category(
                     session=session,
-                    title=data.title,
-                    slug=data.slug,
-                    description=data.description,
-                    is_published=data.is_published,
+                    data=data,
                 )
                 session.commit()
             except CategoryAlreadyExist:
-                raise CategoryAlreadyExistException(slug=data.slug)
-            session.commit()
-            session.refresh(category)
-        return CategoryResponse.model_validate(category)
+                error = CategoryAlreadyExistException(slug=data.slug)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(category)
+            logger.info(
+                    f"Категория {category.slug} создана",
+                    extra={
+                        "event": "category_created"
+                    }
+                )
+            return CategoryResponse.model_validate(category)
 
 
 class UpdateCategoryUseCase:
@@ -84,24 +95,30 @@ class UpdateCategoryUseCase:
         slug: str,
         data: CategoryUpdate,
     ) -> CategoryResponse:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                category = self._repo.get_by_slug(session=session, slug=slug)
+                category = await self._repo.get_by_slug(session=session, slug=slug)
                 updated_category = self._repo.update_category(
                     session=session,
-                    category=category,
-                    title=data.title,
-                    slug=data.slug,
-                    description=data.description,
-                    is_published=data.is_published,
+                    data = data
                 )
             except CategoryNotFoundByName:
-                raise CategoryNotFoundBySlugException(category_slug=slug)
+                error = CategoryNotFoundBySlugException(category_slug=slug)
+                logger.error(error.get_detail())
+                raise error
             except CategoryAlreadyExist:
-                raise CategoryAlreadyExistException(slug=data.slug)
-            session.commit()
-            session.refresh(category)
-        return CategoryResponse.model_validate(updated_category)
+                error = CategoryAlreadyExistException(slug=data.slug)
+                logger.error(error.get_detail())
+                raise error
+            await session.commit()
+            await session.refresh(category)
+            logger.info(
+                f"Категория {category.slug} обновлена",
+                extra={
+                    "event": "category_updated"
+                }
+            )
+            return CategoryResponse.model_validate(updated_category)
 
 
 class DeleteCategoryUseCase:
@@ -110,12 +127,20 @@ class DeleteCategoryUseCase:
         self._repo = CategoryRepository()
 
     async def execute(self, category_id: int) -> None:
-        with self._database.session() as session:
+        async with self._database.session() as session:
             try:
-                category = self._repo.get_by_id(
+                category = await self._repo.get_by_id(
                     session=session, category_id=category_id
                 )
                 self._repo.delete_category(session=session, category=category)
+                logger.info(
+                    f"Категория {category.slug} удалена",
+                    extra={
+                        "event": "category_deleted"
+                    }
+                )
             except CategoryNotFoundById:
-                raise CategoryNotFoundByIdException(category_id=category_id)
+                error = CategoryNotFoundByIdException(category_id=category_id)
+                logger.error(error.get_detail())
+                raise error
             session.commit()

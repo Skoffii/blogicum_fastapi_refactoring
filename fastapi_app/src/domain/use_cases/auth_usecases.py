@@ -22,22 +22,37 @@ class AuthenticateUserUseCase:
 
     async def execute(self, username: str, password: str) -> UserResponse:
         try:
-            with self._database.session() as session:
-                user = self._repo.get_by_login(session=session, login=username)
+            async with self._database.session() as session:
+                user = await self._repo.get_by_login(session=session, login=username)
         except UserNotFoundByUsername:
+            logger.warning(
+                "Попытка входа с несуществующим логином",
+                extra={"username": username, "event": "login_failed"}
+            )
             error = InvalidUsernameException(username=username)
             logger.error(error.get_detail())
             raise error
         if not verify_password(plain_password=password, hashed_password=user.password):
+            logger.warning(
+                "Неверный пароль при входе",
+                extra={ "username": username,
+                        "event": "login_failed"}
+            )
             error = WrongPasswordException()
             logger.error(error.get_detail())
             raise error
+        logger.info(
+            f"Успешный вход пользователя {user.username}",
+            extra={ "user_id": user.id,
+                    "username": user.username,
+                    "event": "login_success"}
+        )
         return UserResponse.model_validate(obj=user)
 
 
 class CreateAccessTokenUseCase:
-    async def execute(self, login: str, expires_delta: timedelta | None = None) -> str:
-        to_encode = {"sub": login}
+    async def execute(self, login: str, user_id: int, expires_delta: timedelta | None = None) -> str:
+        to_encode = {"sub": login, "user_id": user_id}
         if expires_delta:
             expire = datetime.now(timezone.utc) + expires_delta
         else:

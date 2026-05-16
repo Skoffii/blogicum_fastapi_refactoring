@@ -1,83 +1,81 @@
 from typing import Type, Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from infrastructure.models.categories_model import Category
 from core.exceptions.infrastructure_exceptions import *
+from schemas.category import CategoryRequest, CategoryUpdate
 
 
 class CategoryRepository:
     def __init__(self):
         self._model: Type[Category] = Category
 
-    def get_all(
-        self, session: Session, skip: int = 0, limit: int = 20
+    async def get_all(
+        self, session: AsyncSession, skip: int = 0, limit: int = 20
     ) -> List[Category]:
-        query = session.query(self._model).offset(skip).limit(limit)
-        return query.all()
+        query = await session.execute(select(self._model).offset(skip).limit(limit))
+        return query.scalars().all()
 
-    def get_by_slug(self, session: Session, slug: str) -> Optional[Category]:
-        query = session.query(self._model).where(self._model.slug == slug)
+    async def get_by_slug(self, session: AsyncSession, slug: str) -> Optional[Category]:
+        query = await session.execute(select(self._model).where(self._model.slug == slug))
         category = query.scalar()
         if not category:
             raise CategoryNotFoundByName
         return category
 
-    def get_by_id(self, session: Session, category_id: int) -> Optional[Category]:
-        query = session.query(self._model).where(self._model.id == category_id)
+    async def get_by_id(self, session: AsyncSession, category_id: int) -> Optional[Category]:
+        query = await session.execute(select(self._model).where(self._model.id == category_id))
         category = query.scalar()
         if not category:
             raise CategoryNotFoundById
         return category
 
-    def create_category(
+    async def create_category(
         self,
-        session: Session,
-        title: str,
-        slug: str,
-        description: str,
-        is_published: bool = True,
+        session: AsyncSession,
+        data: CategoryRequest
     ) -> Category:
-        existing = session.query(self._model).where(self._model.slug == slug).scalar()
+        if_existing = await session.execute(select(self._model).where(self._model.slug == data.slug))
+        existing = if_existing.scalar()
         if existing:
             raise CategoryAlreadyExist
         new_category = self._model(
-            title=title,
-            slug=slug,
-            description=description,
-            is_published=is_published,
+            title=data.title,
+            slug=data.slug,
+            description=data.description,
+            is_published=data.is_published,
         )
         session.add(new_category)
-        session.flush()
-        session.refresh(new_category)
+        await session.flush()
+        await session.refresh(new_category)
         return new_category
 
-    def update_category(
+    async def update_category(
         self,
-        session: Session,
+        session: AsyncSession,
         category: Category,
-        title: str | None = None,
-        slug: str | None = None,
-        description: str | None = None,
-        is_published: bool | None = None,
+        data: CategoryUpdate
     ) -> Category:
-        if slug and slug != category.slug:
-            existing = (
-                session.query(self._model).where(self._model.slug == slug).scalar()
+        if data.slug and data.slug != category.slug:
+            if_existing = await session.execute(
+                select(self._model).where(self._model.slug == data.slug)
             )
+            existing = if_existing.scalar()
             if existing:
                 raise CategoryAlreadyExist
-            category.slug = slug
+            category.slug = data.slug
 
-        if title:
-            category.title = title
-        if description:
-            category.description = description
-        if is_published is not None:
-            category.is_published = is_published
+        if data.title:
+            category.title = data.title
+        if data.description:
+            category.description = data.description
+        if data.is_published is not None:
+            category.is_published = data.is_published
         return category
 
-    def delete_category(self, session: Session, category: Category) -> None:
-        exist = self.get_by_id(session, category.id)
+    async def delete_category(self, session: AsyncSession, category: Category) -> None:
+        exist = await self.get_by_id(session, category.id)
         if not exist:
             raise CategoryNotFoundById
-        session.delete(category)
+        await session.delete(category)

@@ -1,13 +1,10 @@
 # fastapi_django_refactor_example
 
-# как запустить
- - создайте виртуальное окружение (venv) python (не ниже 3.11)
- - в терминале пропишите
-   - pip install fastapi
-   - pip install uvicorn
-   ## если используете pycharm:
- - нажмите правой кнопкой на папку `src`
-   - выберете `Mark Directory as` -> `Source Root`
- - запустите файл main.py
-   ## в vsCode:
- - из директории src запустите python main.py
+## как запустить
+
+1. Скопируйте проект в рабочую директорию с помощью `git clone`
+2. Настройте переменные окружения. Для образца используйте `.env_example`
+3. Перейдите в директорию fastapi_app
+4. Запустите проект в `Docker` с помощью `docker compose up --build -d`
+
+Проект будет доступен по адресу `http://localhost:8000`

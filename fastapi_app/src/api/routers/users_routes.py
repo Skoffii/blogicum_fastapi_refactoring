@@ -30,7 +30,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/users/{user_id}",
+    "/users/id/{user_id}/",
     response_model=UserResponse,
     responses={
         401: {"model": ErrorResponse},
@@ -53,7 +53,7 @@ async def get_user_by_id(
 
 
 @router.get(
-    "/users/{login}",
+    "/users/usernames/{login}/",
     response_model=UserResponse,
     responses={
         401: {"model": ErrorResponse},
@@ -76,7 +76,7 @@ async def get_user_by_login(
 
 
 @router.post(
-    "/users/create",
+    "/users/create/",
     response_model=UserResponse,
     responses={
         201: {"model": UserResponse},
@@ -106,7 +106,7 @@ async def create_user(
 
 
 @router.put(
-    "/user/{user_id}/edit",
+    "/user/{user_id}/edit/",
     response_model=UserResponse,
     responses={
         401: {"model": ErrorResponse},
@@ -145,7 +145,7 @@ async def update_user(
 
 
 @router.delete(
-    "/user/{user_id}/delete",
+    "/user/{user_id}/delete/",
     responses={
         204: {"detail": "NO_CONTENT"},
         401: {"model": ErrorResponse},
